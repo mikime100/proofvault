@@ -1,0 +1,34 @@
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: proofvault
+          POSTGRES_PASSWORD: proofvault
+          POSTGRES_DB: proofvault
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U proofvault" --health-interval 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://proofvault:proofvault@localhost:5432/proofvault
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+      - name: Migrate and seed
+        run: pnpm db:reset
+      - name: Integration tests
+        run: pnpm test:int

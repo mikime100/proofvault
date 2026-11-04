@@ -1,0 +1,42 @@
+{
+  "name": "@proofvault/api",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "nest start --watch --env-file .env",
+    "build": "nest build",
+    "start": "node dist/main.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:int": "vitest run --config vitest.int.config.ts --passWithNoTests",
+    "postinstall": "prisma generate",
+    "db:reset": "prisma migrate reset --force",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.1.0",
+    "@nestjs/core": "^11.1.0",
+    "@nestjs/platform-express": "^11.1.0",
+    "@prisma/client": "^6.16.0",
+    "@proofvault/shared": "workspace:*",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.0",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.0",
+    "@nestjs/testing": "^11.1.0",
+    "@swc/core": "^1.13.0",
+    "@types/express": "^5.0.0",
+    "@types/supertest": "^6.0.0",
+    "prisma": "^6.16.0",
+    "supertest": "^7.1.0",
+    "tsx": "^4.20.0",
+    "unplugin-swc": "^1.5.0",
+    "vitest": "^3.2.0"
+  }
+}

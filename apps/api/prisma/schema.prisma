@@ -1,0 +1,177 @@
+// Data model from HANDOFF.md section 7, plus ActionLog and checkout IP/device on Order.
+// Shapes the frontends see are in packages/shared; keep the two in step.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Seller {
+  id               String    @id @default(cuid())
+  name             String
+  email            String    @unique
+  paypalMerchantId String?
+  /// SellerRules from packages/shared
+  autoActionRules  Json
+  products         Product[]
+  createdAt        DateTime  @default(now())
+}
+
+enum ProductType {
+  course
+  file
+  license
+}
+
+model Product {
+  id       String      @id @default(cuid())
+  sellerId String
+  seller   Seller      @relation(fields: [sellerId], references: [id])
+  name     String
+  type     ProductType
+  /// Decimal string, e.g. "49.00"
+  price    String
+  currency String      @default("USD")
+  orders   Order[]
+}
+
+enum RiskLevel {
+  low
+  medium
+  high
+}
+
+model Order {
+  id              String        @id @default(cuid())
+  paypalOrderId   String        @unique
+  paypalCaptureId String?       @unique
+  productId       String
+  product         Product       @relation(fields: [productId], references: [id])
+  buyerEmail      String
+  amount          String
+  currency        String        @default("USD")
+  /// Full IP. Mask with maskIp() before it leaves the api.
+  checkoutIp      String
+  checkoutDevice  String
+  riskLevel       RiskLevel     @default(low)
+  /// Token the store uses to unlock lessons after capture.
+  accessToken     String        @unique @default(cuid())
+  createdAt       DateTime      @default(now())
+  events          AccessEvent[]
+  disputes        Dispute[]
+}
+
+enum AccessEventType {
+  login
+  lesson_view
+  download
+  activation
+}
+
+model AccessEvent {
+  id        String          @id @default(cuid())
+  orderId   String
+  order     Order           @relation(fields: [orderId], references: [id])
+  type      AccessEventType
+  ip        String
+  device    String
+  userAgent String
+  meta      Json?
+  at        DateTime        @default(now())
+
+  @@index([orderId, at])
+}
+
+model Dispute {
+  id              String           @id @default(cuid())
+  paypalDisputeId String           @unique
+  /// Null when PayPal sends a dispute for an order we do not know.
+  orderId         String?
+  order           Order?           @relation(fields: [orderId], references: [id])
+  /// PayPal reason enum, stored as sent
+  reason          String
+  amount          String
+  currency        String           @default("USD")
+  /// PayPal status enum, stored as sent
+  status          String
+  responseDueAt   DateTime?
+  winScore        Int?
+  /// Last raw dispute JSON from PayPal, for debugging
+  raw             Json?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  evidence        EvidencePackage?
+  outcome         Outcome?
+  actions         ActionLog[]
+}
+
+model EvidencePackage {
+  id            String    @id @default(cuid())
+  disputeId     String    @unique
+  dispute       Dispute   @relation(fields: [disputeId], references: [id])
+  /// PipelineResult from packages/shared (timeline, claims, score, decision)
+  analysis      Json
+  draftResponse String
+  approvedBy    String?
+  autoSubmitted Boolean   @default(false)
+  submittedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+enum OutcomeResult {
+  won
+  lost
+  refunded
+  offer_accepted
+}
+
+model Outcome {
+  id                String        @id @default(cuid())
+  disputeId         String        @unique
+  dispute           Dispute       @relation(fields: [disputeId], references: [id])
+  result            OutcomeResult
+  evidenceTypesUsed String[]
+  createdAt         DateTime      @default(now())
+}
+
+enum ActionType {
+  submit
+  offer
+  accept
+  message
+  require_evidence
+  adjudicate
+  analyze
+}
+
+enum Actor {
+  agent
+  seller
+}
+
+model ActionLog {
+  id        String     @id @default(cuid())
+  disputeId String
+  dispute   Dispute    @relation(fields: [disputeId], references: [id])
+  action    ActionType
+  actor     Actor
+  ok        Boolean
+  detail    String
+  request   Json?
+  response  Json?
+  createdAt DateTime   @default(now())
+
+  @@index([disputeId, createdAt])
+}
+
+/// Webhook ids we have already handled, so a resent webhook does nothing.
+model WebhookEvent {
+  id         String   @id
+  eventType  String
+  receivedAt DateTime @default(now())
+}

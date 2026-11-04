@@ -1,0 +1,31 @@
+{
+  "name": "proofvault",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.20.0",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "build:shared": "pnpm --filter @proofvault/shared build",
+    "dev": "pnpm build:shared && pnpm -r --parallel --filter !@proofvault/shared dev",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "test": "pnpm -r test",
+    "build": "pnpm -r build",
+    "check": "pnpm build:shared && pnpm typecheck && pnpm lint && pnpm test && pnpm build",
+    "test:int": "pnpm --filter @proofvault/api test:int",
+    "db:reset": "pnpm build:shared && pnpm --filter @proofvault/api db:reset",
+    "smoke": "tsx --env-file=apps/api/.env scripts/smoke.ts"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.30.0",
+    "@types/node": "^22.15.0",
+    "eslint": "^9.30.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "globals": "^16.3.0",
+    "prettier": "^3.6.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.38.0"
+  }
+}

@@ -1,0 +1,74 @@
+# Render blueprint: creates every service from this one file (Render > Blueprints > New).
+# Secrets marked sync: false are typed into the Render dashboard, never committed.
+services:
+  - type: web
+    name: proofvault-api
+    runtime: node
+    plan: starter # not free: free plan sleeps, and a sleeping api misses webhooks
+    region: frankfurt
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build:shared && pnpm --filter @proofvault/api build
+    preDeployCommand: pnpm --filter @proofvault/api db:deploy
+    startCommand: node apps/api/dist/main.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: '22'
+      - key: DATABASE_URL
+        fromDatabase:
+          name: proofvault-db
+          property: connectionString
+      - key: PAYPAL_ENV
+        value: sandbox
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: PAYPAL_WEBHOOK_ID
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: WEB_ORIGIN
+        sync: false
+      - key: STORE_ORIGIN
+        sync: false
+
+  - type: web
+    name: proofvault-web
+    runtime: static
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build:shared && pnpm --filter @proofvault/web build
+    staticPublishPath: apps/web/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: NODE_VERSION
+        value: '22'
+      - key: VITE_API_URL
+        sync: false
+      - key: VITE_USE_FIXTURES
+        value: 'false'
+
+  - type: web
+    name: proofvault-store
+    runtime: static
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build:shared && pnpm --filter @proofvault/store build
+    staticPublishPath: apps/store/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: NODE_VERSION
+        value: '22'
+      - key: VITE_API_URL
+        sync: false
+      - key: VITE_PAYPAL_CLIENT_ID
+        sync: false
+
+databases:
+  - name: proofvault-db
+    plan: basic-256mb
+    region: frankfurt
+    databaseName: proofvault
+    user: proofvault
