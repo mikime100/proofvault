@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@proofvault/shared": "workspace:*",
+    "@proofvault/sdk": "workspace:*",
     "clsx": "^2.1.1",
     "lucide-react": "^0.530.0",
     "react": "^19.1.0",
