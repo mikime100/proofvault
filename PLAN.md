@@ -100,7 +100,7 @@ proofvault/
 
 ### Pipeline (one dispute)
 1. **Intake**: webhook or poll sees a new or changed dispute, saves it (upsert by `paypal_dispute_id`, so duplicates do nothing).
-2. **Load**: `GET /v1/customer/disputes/{id}`, match to our order by PayPal order or capture ID.
+2. **Load**: `GET /v1/customer/disputes/{id}`, match to our order by capture ID first, then by `custom_id` (our order id, sent to PayPal at order creation).
 3. **Timeline**: collect order + access events, sort, save as JSON. Every timeline entry keeps its database record ID.
 4. **Draft**: Claude gets the timeline and the dispute reason, returns structured claims (see section 4).
 5. **Check**: code verifies every claim against the database. Failing claims are dropped and logged.
@@ -255,10 +255,10 @@ One `render.yaml` blueprint creates everything:
 
 All within the $50 Render credits. Do not use the free web service plan for the API: it sleeps when idle and the first request takes ~50 seconds, which kills webhooks and the live demo.
 
-**Env vars (API):** `DATABASE_URL`, `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_WEBHOOK_ID`, `PAYPAL_ENV=sandbox`, `ANTHROPIC_API_KEY`, `WEB_ORIGIN`, `STORE_ORIGIN`.
+**Env vars (API):** `DATABASE_URL`, `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_WEBHOOK_ID`, `PAYPAL_ENV=sandbox`, `ANTHROPIC_API_KEY`, `WEB_ORIGIN`, `STORE_ORIGIN`, `DEMO_PASSCODE`.
 **Env vars (web/store, build time):** `VITE_API_URL`, `VITE_PAYPAL_CLIENT_ID`, `VITE_AG_LICENSE_KEY` (trial key, never committed).
 
-**Release checklist (Nov 11):** migrations run on deploy, seed demo seller in prod DB, webhook URL in PayPal app points at the prod API, CORS allows web + store origins, health check route `/health` returns 200, no secrets in git history.
+**Release checklist (Nov 11):** migrations and the seller-only seed run on deploy, `DEMO_PASSCODE` set, webhook URL in PayPal app points at the prod API, CORS allows web + store origins, health check route `/health` returns 200, no secrets in git history.
 
 ---
 

@@ -58,7 +58,7 @@ model Order {
   checkoutIp      String
   checkoutDevice  String
   riskLevel       RiskLevel     @default(low)
-  /// Token the store uses to unlock lessons after capture.
+  /// Private token the buyer gets after capture. Unlocks lessons and signs every /track call.
   accessToken     String        @unique @default(cuid())
   createdAt       DateTime      @default(now())
   events          AccessEvent[]

@@ -1,11 +1,11 @@
 import { z } from 'zod';
 
-// ---------- Basics (data rules from INTEGRATION.md section 2) ----------
+// ---------- Basics (data rules from INTEGRATION.md section 3) ----------
 
 /** UTC ISO 8601, e.g. "2026-11-05T14:03:00Z". */
 export const IsoDate = z.iso.datetime();
 
-/** Money as PayPal sends it: value is a string with 2 decimals. */
+/** Money as PayPal sends it: value is a string with 2 decimals. USD only for the hackathon. */
 export const Money = z.object({
   value: z.string().regex(/^\d+\.\d{2}$/),
   currency: z.literal('USD'),
@@ -27,6 +27,13 @@ export const DisputeReason = z.enum([
 ]);
 export type DisputeReason = z.infer<typeof DisputeReason>;
 
+/** The reasons ProofVault scores. Every other reason goes to await_approval with flag unsupported_reason. */
+export const SUPPORTED_REASONS: readonly DisputeReason[] = [
+  'MERCHANDISE_OR_SERVICE_NOT_RECEIVED',
+  'MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED',
+  'UNAUTHORISED',
+];
+
 /** PayPal's own dispute status values, unchanged. */
 export const DisputeStatus = z.enum([
   'OPEN',
@@ -38,6 +45,7 @@ export const DisputeStatus = z.enum([
 ]);
 export type DisputeStatus = z.infer<typeof DisputeStatus>;
 
+/** login = the buyer opened the course in a new browser session (fired once per session). */
 export const AccessEventType = z.enum(['login', 'lesson_view', 'download', 'activation']);
 export type AccessEventType = z.infer<typeof AccessEventType>;
 
@@ -49,18 +57,24 @@ export const AccessEvent = z.object({
   id: z.string(),
   orderId: z.string(),
   type: AccessEventType,
-  /** Full IP inside the api and pipeline. Masked by the api before it leaves the server. */
+  /**
+   * Set by the server from X-Forwarded-For, never sent by the browser.
+   * Full IP inside the api and pipeline. Masked by the api before it leaves the server.
+   */
   ip: z.string(),
   device: z.string(),
   userAgent: z.string(),
+  /** Set by the server when the event arrives, never sent by the browser. */
   at: IsoDate,
   meta: z.record(z.string(), z.string()).optional(),
 });
 export type AccessEvent = z.infer<typeof AccessEvent>;
 
 export const Order = z.object({
+  /** Also sent to PayPal as custom_id when the order is created, as a second way to match disputes. */
   id: z.string(),
   paypalOrderId: z.string(),
+  /** Null only before capture. Disputes are matched on this first, then on custom_id. */
   paypalCaptureId: z.string().nullable(),
   productId: z.string(),
   buyerEmail: z.string(),
@@ -116,6 +130,7 @@ export const Timeline = z.object({
 export type Timeline = z.infer<typeof Timeline>;
 
 export const Claim = z.object({
+  /** Dates inside claim text are always YYYY-MM-DD. The UI and PDF format them for display. */
   text: z.string().min(1),
   recordIds: z.array(z.string()),
 });
@@ -159,9 +174,18 @@ export const Score = z.object({
 });
 export type Score = z.infer<typeof Score>;
 
+/**
+ * decide() checks these in this exact order (first match wins):
+ * 1. unsupported reason or no matching order -> await_approval
+ * 2. autoSubmitEnabled and score >= autoSubmitMinScore -> submit
+ * 3. score < weakScoreBelow and amount <= autoAcceptMaxAmount -> accept
+ * 4. score < weakScoreBelow and amount <= autoOfferMaxAmount -> offer (offerPercent of amount)
+ * 5. everything else -> await_approval
+ */
 export const SellerRules = z.object({
   autoSubmitEnabled: z.boolean(),
   autoSubmitMinScore: z.number().int().min(0).max(100),
+  weakScoreBelow: z.number().int().min(0).max(100),
   autoAcceptMaxAmount: z.string().regex(/^\d+\.\d{2}$/),
   autoOfferMaxAmount: z.string().regex(/^\d+\.\d{2}$/),
   offerPercent: z.number().int().min(1).max(100),
@@ -171,6 +195,12 @@ export type SellerRules = z.infer<typeof SellerRules>;
 export const DecisionAction = z.enum(['submit', 'offer', 'accept', 'await_approval']);
 export type DecisionAction = z.infer<typeof DecisionAction>;
 
+/**
+ * What the pipeline recommends. The api's executor only runs it automatically when:
+ * - this is the first analysis with no earlier agent action on the dispute, and
+ * - the dispute status is WAITING_FOR_SELLER_RESPONSE.
+ * Otherwise it waits for the seller. A rejected offer never triggers a second auto offer.
+ */
 export const Decision = z.object({
   action: DecisionAction,
   reason: z.string(),
@@ -178,7 +208,12 @@ export const Decision = z.object({
 });
 export type Decision = z.infer<typeof Decision>;
 
-export const PipelineFlag = z.enum(['no_matching_order', 'llm_failed', 'no_access_events']);
+export const PipelineFlag = z.enum([
+  'no_matching_order',
+  'unsupported_reason',
+  'llm_failed',
+  'no_access_events',
+]);
 export type PipelineFlag = z.infer<typeof PipelineFlag>;
 
 export const PipelineResult = z.object({
@@ -204,6 +239,12 @@ export interface LlmClient {
 
 // ---------- API (Mike serves, Moges consumes) ----------
 
+/**
+ * Every route that changes something (approve, submit, offer, accept, sandbox steps, rules)
+ * needs this header to equal the server's DEMO_PASSCODE. Reads stay open for judges.
+ */
+export const DEMO_PASSCODE_HEADER = 'x-demo-passcode';
+
 export const ApiError = z.object({
   error: z.object({ code: z.string(), message: z.string() }),
 });
@@ -212,8 +253,9 @@ export type ApiError = z.infer<typeof ApiError>;
 export const Health = z.object({ ok: z.literal(true), version: z.string() });
 export type Health = z.infer<typeof Health>;
 
+/** Tied to the order's private accessToken, so nobody who only knows an order id can fake evidence. */
 export const TrackRequest = z.object({
-  paypalOrderId: z.string(),
+  accessToken: z.string().min(1),
   type: AccessEventType,
   meta: z.record(z.string(), z.string()).optional(),
 });

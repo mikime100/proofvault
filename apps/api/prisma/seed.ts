@@ -1,15 +1,21 @@
-// Loads the five shared scenarios into Postgres. Run with `pnpm db:reset` from the repo root.
+// Local and CI: demo seller, product and the five shared scenarios (`pnpm db:reset`).
+// Production: SEED_SCENARIOS=false loads only the seller and product. Real sandbox disputes fill the rest.
+// Safe to run twice.
 import { PrismaClient } from '@prisma/client';
 import { DEFAULT_RULES, DEMO_PRODUCT, DEMO_SELLER, SCENARIOS } from '@proofvault/shared/fixtures';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  await prisma.seller.create({
-    data: { ...DEMO_SELLER, autoActionRules: DEFAULT_RULES },
+  await prisma.seller.upsert({
+    where: { id: DEMO_SELLER.id },
+    update: {},
+    create: { ...DEMO_SELLER, autoActionRules: DEFAULT_RULES },
   });
-  await prisma.product.create({
-    data: {
+  await prisma.product.upsert({
+    where: { id: DEMO_PRODUCT.id },
+    update: {},
+    create: {
       id: DEMO_PRODUCT.id,
       sellerId: DEMO_PRODUCT.sellerId,
       name: DEMO_PRODUCT.name,
@@ -17,6 +23,11 @@ async function main() {
       price: DEMO_PRODUCT.price.value,
     },
   });
+
+  if (process.env.SEED_SCENARIOS === 'false') {
+    console.log('Seeded demo seller and product only (SEED_SCENARIOS=false).');
+    return;
+  }
 
   for (const { context } of SCENARIOS) {
     const { order, events, dispute } = context;
@@ -43,8 +54,10 @@ async function main() {
         skipDuplicates: true,
       });
     }
-    await prisma.dispute.create({
-      data: {
+    await prisma.dispute.upsert({
+      where: { id: dispute.id },
+      update: {},
+      create: {
         id: dispute.id,
         paypalDisputeId: dispute.paypalDisputeId,
         orderId: dispute.orderId,

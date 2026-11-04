@@ -1,4 +1,4 @@
-// The five shared scenarios from INTEGRATION.md section 4.
+// The five shared scenarios from INTEGRATION.md section 5.
 // The seed loads exactly this data, and every slice tests against it.
 // Change these only through a PR all three see.
 import type {
@@ -30,6 +30,7 @@ export const DEMO_PRODUCT = {
 export const DEFAULT_RULES: SellerRules = {
   autoSubmitEnabled: true,
   autoSubmitMinScore: 75,
+  weakScoreBelow: 40,
   autoAcceptMaxAmount: '15.00',
   autoOfferMaxAmount: '30.00',
   offerPercent: 50,

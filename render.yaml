@@ -7,6 +7,7 @@ services:
     plan: starter # not free: free plan sleeps, and a sleeping api misses webhooks
     region: frankfurt
     buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build:shared && pnpm --filter @proofvault/api build
+    # Runs migrations, then seeds only the demo seller and product (never the fake scenarios).
     preDeployCommand: pnpm --filter @proofvault/api db:deploy
     startCommand: node apps/api/dist/main.js
     healthCheckPath: /health
@@ -30,6 +31,8 @@ services:
       - key: WEB_ORIGIN
         sync: false
       - key: STORE_ORIGIN
+        sync: false
+      - key: DEMO_PASSCODE
         sync: false
 
   - type: web

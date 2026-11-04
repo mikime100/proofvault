@@ -22,17 +22,42 @@ So:
 
 If someone changes a shape, the other two get a TypeScript error the same day, not a broken demo on Nov 11.
 
-On top of that, we share **five fixed test scenarios** (section 4). Every slice must give the expected result on all five. If all three pass them alone, they will pass together.
+On top of that, we share **five fixed test scenarios** (section 5). Every slice must give the expected result on all five. If all three pass them alone, they will pass together.
 
 ---
 
-## 2. Shared standard (everyone)
+## 2. Contract decisions (agreed Nov 4)
+
+Settled by grilling the contract. Code already matches. Change only through a PR all three see.
+
+| # | Decision |
+|---|---|
+| 1 | **Matching a dispute to an order:** our order id is sent to PayPal as `custom_id` when the order is created. Match on `paypalCaptureId` first, `custom_id` second. `paypalCaptureId` is null only before capture. |
+| 2 | **Tracking is tied to the order's private `accessToken`**, not the public PayPal order id. The server sets event time and IP (from `X-Forwarded-For`); the browser never sends them. |
+| 3 | **`decide()` rule order is fixed** (first match wins): (1) unsupported reason or no matching order: `await_approval`; (2) auto-submit on and score >= `autoSubmitMinScore`: `submit`; (3) score < `weakScoreBelow` and amount <= `autoAcceptMaxAmount`: `accept`; (4) score < `weakScoreBelow` and amount <= `autoOfferMaxAmount`: `offer` at `offerPercent`; (5) otherwise `await_approval`. `weakScoreBelow` (default 40) is a seller rule. |
+| 4 | **Only three reasons are scored** (`SUPPORTED_REASONS`): not received, not as described, unauthorised. Any other reason goes to `await_approval` with flag `unsupported_reason`. |
+| 5 | **Claim checker rule:** every claim cites at least one record from this order; any date in it matches a cited record's date; any count equals the number of cited records of that type, or their distinct days. Everything else is accepted on its citations. |
+| 6 | **One evidence package per dispute.** Re-running the analysis replaces it; each run is logged as an `analyze` action. |
+| 7 | **USD only** for the whole hackathon. |
+| 8 | **Buyer access:** after payment the store shows a private link `/learn?t=<token>` and saves the token in local storage. A `login` event fires once per new browser session. Receipt email with the link stays stretch. |
+| 9 | **Auto-actions run at most once per dispute:** only on the first analysis, only with no earlier agent action, only while status is `WAITING_FOR_SELLER_RESPONSE`. Later runs update draft and score only; further actions need a seller click. Enforced by Mike's executor, not by `decide()`. |
+| 10 | **Rejected offer:** the dispute drops to `await_approval`. Never a second automatic offer. |
+| 11 | **Dates inside claims are `YYYY-MM-DD` only.** The checker rejects any other date format. Dashboard and PDF format dates for display. |
+| 12 | **`provide-evidence` payload:** one evidence item per submission: response text as notes, evidence PDF as the document, evidence type matched to the dispute reason (exact PayPal names checked by Mike before Nov 6). |
+| 13 | **No automatic action at the deadline.** Only warnings: Bryntum row turns red, dashboard shows a "due in under 48h" badge. |
+| 14 | **Demo passcode on writes:** every route that changes something (approve, submit, offer, accept, sandbox steps, rules) needs header `x-demo-passcode` (`DEMO_PASSCODE_HEADER`) to match the server's `DEMO_PASSCODE`. Reads stay open. Mike puts `@UseGuards(PasscodeGuard)` on write routes; the dashboard asks for the passcode once and sends it on every write. |
+| 15 | **Production database:** only the demo seller and product (`SEED_SCENARIOS=false`, run on every deploy). Real sandbox disputes fill the rest. The five scenarios exist only in local dev and CI. |
+
+---
+
+## 3. Shared standard (everyone)
 
 ### Tools (same versions for all)
 - Node 22 LTS, pnpm 11, Docker Desktop (for local Postgres)
 - TypeScript strict mode in every package
 - **Vitest** for every test (one test runner across the repo, Mike sets it up for NestJS too)
 - ESLint + Prettier with the repo config. Do not change the config in your own PR.
+- Claude Code with the `mattpocock-skills` plugin (enabled in `.claude/settings.json`, so Claude Code offers to install it when you open the repo). Use: `tdd` for pipeline logic (Fitsum), `code-review` before every PR, `diagnosing-bugs` for anything broken, `grilling` to pressure-test a plan or contract change.
 
 ### One command decides if code is ready
 ```bash
@@ -76,19 +101,19 @@ Never in git. Each app has a `.env.example` listing every variable with a fake v
 ### Branches and PRs
 - Branch names: `mike/...`, `fitsum/...`, `moges/...`
 - Small PRs, merged at least once a day. A branch older than 2 days is a warning sign.
-- Every PR fills in the template (section 6).
+- Every PR fills in the template (section 7).
 - Mike merges. Mike's own PRs get a quick look from Fitsum or Moges.
 
 ---
 
-## 3. Testing standard
+## 4. Testing standard
 
 | Level | What | Who | Tool |
 |---|---|---|---|
 | Unit | Pure logic: timeline, claim check, score, rules engine, SDK payload | Fitsum, Moges (SDK) | Vitest |
 | Contract | API responses and pipeline outputs pass the shared Zod schemas | Mike (API side), Fitsum (pipeline side), Moges (client side, at runtime) | Vitest + Zod |
 | Integration | API against real local Postgres: webhook duplicates, `/track`, disputes endpoints | Mike | Vitest + supertest |
-| AI eval | Real Claude call on the 5 scenarios, checks the rules in section 4 | Fitsum | `pnpm eval:draft` script |
+| AI eval | Real Claude call on the 5 scenarios, checks the rules in section 5 | Fitsum | `pnpm eval:draft` script |
 | Click path | Manual run of the demo flow on staging | Moges writes it, Mike runs it at each checkpoint | Checklist in `docs/click-path.md` |
 
 What we do **not** test: UI components, CSS, PayPal itself. The click path covers the UI.
@@ -97,7 +122,7 @@ What we do **not** test: UI components, CSS, PayPal itself. The click path cover
 
 ---
 
-## 4. The five shared scenarios (golden fixtures)
+## 5. The five shared scenarios (golden fixtures)
 
 These live in `packages/shared/fixtures/` as JSON, and the seed loads the same data into Postgres. Mike writes them on Nov 4. **They are the acceptance test for everyone.**
 
@@ -111,13 +136,13 @@ These live in `packages/shared/fixtures/` as JSON, and the seed loads the same d
 
 Default seller rules for the scenarios:
 ```json
-{ "autoSubmitMinScore": 75, "autoSubmitEnabled": true,
+{ "autoSubmitMinScore": 75, "autoSubmitEnabled": true, "weakScoreBelow": 40,
   "autoAcceptMaxAmount": "15.00", "autoOfferMaxAmount": "30.00", "offerPercent": 50 }
 ```
 
 ---
 
-## 5. What each person delivers to Mike
+## 6. What each person delivers to Mike
 
 ### Fitsum delivers: the pipeline module
 
@@ -161,22 +186,24 @@ runPipeline(input: DisputeContext, rules: SellerRules, deps: { llm: LlmClient })
 
 **Rules for Moges's code:**
 - One API client file per app (`src/api.ts`). Every call parses the response with the shared Zod schema. If parsing fails, show a toast and log it, so a contract break is loud.
+- Write calls send the `x-demo-passcode` header. Ask for the passcode once (a small dialog), keep it in local storage.
 - Until Mike's endpoint for a screen exists, the client returns the matching JSON from `packages/shared/fixtures` (switch: `VITE_USE_FIXTURES=true`). Same shapes, so switching to the real API is one env change.
 - shadcn/ui, Tailwind, lucide, Sonner, TanStack Query. AG Studio and Bryntum only where planned.
 
 **SDK interface (`packages/sdk`):**
 ```ts
-ProofVault.init({ apiUrl, paypalOrderId })
+ProofVault.init({ apiUrl, accessToken })   // private token from capture, not the PayPal order id
 ProofVault.track(type: 'login' | 'lesson_view' | 'download' | 'activation', meta?: Record<string, string>)
 ```
-Sends `POST /track`. Under 2 KB, no dependencies, never throws (a tracking failure must not break the buyer's page).
+Sends `POST /track`. The server sets the time and IP, never the browser. Under 2 KB, no dependencies, never throws (a tracking failure must not break the buyer's page).
 
 **Screens and what each must show:**
 | App | Screen | Must show / do |
 |---|---|---|
 | store | Course page | Price, PayPal button (SDK v6), "access is logged" line |
-| store | After payment | Lessons 1 to 4, bonus PDF download, each fires `track` |
-| web | Dispute list | Reason, amount, status, deadline, score, decision badge |
+| store | After payment | Private link `/learn?t=<token>` shown and token saved in local storage; `login` fired once per browser session |
+| store | Lessons | Lessons 1 to 4, bonus PDF download, each fires `track` |
+| web | Dispute list | Reason, amount, status, deadline, score, decision badge, "due in under 48h" badge |
 | web | Dispute detail | Timeline, each claim with its linked records highlighted, "removed by guardrail" box, score + reasons, action buttons |
 | web | Approval | One click approve/submit, offer, accept; result toast; action log updates |
 | web | Rules | Edit the seller rules JSON fields as a form |
@@ -215,7 +242,7 @@ They are blocked without these, so they come first.
 
 ---
 
-## 6. PR template (`.github/pull_request_template.md`)
+## 7. PR template (`.github/pull_request_template.md`)
 ```md
 ## What
 One or two lines.
@@ -236,7 +263,7 @@ Command, URL or screen to look at.
 
 ---
 
-## 7. How Mike integrates
+## 8. How Mike integrates
 
 1. **Daily, 8:00 PM EAT:** 15-minute sync. Each person says what is merged, what is blocked, what merges tomorrow.
 2. **Merge:** pull the branch, `pnpm check`, read the diff, merge. Bounce it back if any acceptance box is unticked; say which box.

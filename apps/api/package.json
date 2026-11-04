@@ -12,7 +12,7 @@
     "postinstall": "prisma generate",
     "db:reset": "prisma migrate reset --force",
     "db:migrate": "prisma migrate dev",
-    "db:deploy": "prisma migrate deploy"
+    "db:deploy": "prisma migrate deploy && SEED_SCENARIOS=false prisma db seed"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

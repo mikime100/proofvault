@@ -1,4 +1,4 @@
-// The only file in this app that talks to the api (INTEGRATION.md section 5, Moges rules).
+// The only file in this app that talks to the api (INTEGRATION.md section 6, Moges rules).
 // Every response is checked against the shared schema, so a contract break is loud, not silent.
 import { DisputeDetail, DisputeList, Health } from '@proofvault/shared';
 import { toast } from 'sonner';

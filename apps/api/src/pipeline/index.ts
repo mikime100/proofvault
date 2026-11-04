@@ -1,4 +1,4 @@
-// Fitsum's module. Signatures are the contract (INTEGRATION.md section 5).
+// Fitsum's module. Signatures are the contract (INTEGRATION.md section 6).
 // Pure inputs and outputs: no Prisma, no PayPal client in here (eslint enforces it).
 import type {
   Decision,
@@ -30,6 +30,15 @@ export async function draftResponse(
   return todo('draftResponse');
 }
 
+/**
+ * A claim is accepted only if:
+ * - it cites at least one record, and every cited record is in this timeline
+ * - dates are written as YYYY-MM-DD (any other date format is rejected)
+ * - any date written in it matches the date of one of its cited records
+ * - any count in it ("4 lessons", "3 days") equals the number of cited records of that type,
+ *   or the number of distinct days among them
+ * Anything else in the text is accepted on the strength of its citations.
+ */
 export function checkClaims(_draft: Draft, _timeline: Timeline): CheckResult {
   return todo('checkClaims');
 }
@@ -42,6 +51,7 @@ export async function explainScore(_score: Score, _llm: LlmClient): Promise<stri
   return todo('explainScore');
 }
 
+/** Rule order is fixed: see the comment on SellerRules in packages/shared. */
 export function decide(_score: Score, _amount: Money, _rules: SellerRules): Decision {
   return todo('decide');
 }
