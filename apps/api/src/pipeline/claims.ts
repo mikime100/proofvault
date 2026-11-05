@@ -9,6 +9,8 @@ import type { Claim, CheckResult, Draft, Timeline, TimelineEntry } from '@proofv
 const NON_ISO_DATE =
   /\b(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sept?|Oct|Nov|Dec)\b(?:\.?\s+\d{1,2}(?:st|nd|rd|th)?\b)?|\b\d{1,2}(?:st|nd|rd|th)?\s+(?:of\s+)?(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sept?|Oct|Nov|Dec)\b|\b\d{1,4}[/.]\d{1,2}[/.]\d{1,4}\b|\b(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b/;
 const RELATIVE_DAY = /\b(?:yesterday|today|tomorrow)\b/i;
+/** ISO datetime strings (2026-11-02T18:00…) — must be rejected; only YYYY-MM-DD is allowed. */
+const ISO_DATETIME = /\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
 const ISO_DATE = /\b\d{4}-\d{2}-\d{2}\b/g;
 
 const NUMBER_WORDS: Record<string, number> = {
@@ -37,7 +39,7 @@ function rejectReason(claim: Claim, byId: Map<string, TimelineEntry>): string | 
     cited.push(entry);
   }
 
-  const bad = claim.text.match(NON_ISO_DATE) ?? claim.text.match(RELATIVE_DAY);
+  const bad = claim.text.match(ISO_DATETIME) ?? claim.text.match(NON_ISO_DATE) ?? claim.text.match(RELATIVE_DAY);
   if (bad) return `Writes a date as "${bad[0]}"; dates must be YYYY-MM-DD`;
 
   const citedDays = new Set(cited.map(dayOf));
