@@ -24,23 +24,44 @@ interface PayPalSDK {
 }
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3333';
+const TOKEN_KEY = 'pv_access_token';
+const LOGIN_KEY = 'pv_login_fired';
 const paypal = () => (window as { paypal?: PayPalSDK }).paypal;
 
+function tokenFromUrl(): string | null {
+  return new URLSearchParams(window.location.search).get('t');
+}
+
 export function App() {
-  const [view, setView] = useState<View>('course');
-  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [view, setView] = useState<View>(() =>
+    tokenFromUrl() || localStorage.getItem(TOKEN_KEY) ? 'lessons' : 'course',
+  );
+  const [accessToken, setAccessToken] = useState<string | null>(
+    () => tokenFromUrl() ?? localStorage.getItem(TOKEN_KEY),
+  );
   const [error, setError] = useState<string | null>(null);
   const [paypalSdkLoaded, setPaypalSdkLoaded] = useState(false);
+  const [paypalSdkFailed, setPaypalSdkFailed] = useState(false);
   const buttonsRendered = useRef(false);
   const paypalContainer = useRef<HTMLDivElement>(null);
 
+  // A ?t=<token> link is the buyer's private access link: keep it and remember it.
   useEffect(() => {
-    // Initialize the ProofVault tracking SDK once we have the order's access token.
-    if (accessToken) {
-      ProofVault.init({
-        apiUrl: API_URL,
-        accessToken,
-      });
+    const t = tokenFromUrl();
+    if (t) {
+      localStorage.setItem(TOKEN_KEY, t);
+      setAccessToken(t);
+      setView('lessons');
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!accessToken) return;
+    ProofVault.init({ apiUrl: API_URL, accessToken });
+    // login fires once per browser session, not once per page view.
+    if (!sessionStorage.getItem(LOGIN_KEY)) {
+      sessionStorage.setItem(LOGIN_KEY, '1');
+      void ProofVault.track('login');
     }
   }, [accessToken]);
 
@@ -62,6 +83,10 @@ export function App() {
     script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&currency=USD&intent=capture`;
     script.async = true;
     script.onload = () => setPaypalSdkLoaded(true);
+    script.onerror = () => {
+      setPaypalSdkLoaded(true);
+      setPaypalSdkFailed(true);
+    };
     document.body.appendChild(script);
     return () => {
       document.body.removeChild(script);
@@ -80,13 +105,13 @@ export function App() {
       buttonsRendered.current = false;
       return;
     }
-    if (
-      buttonsRendered.current ||
-      !paypalContainer.current ||
-      !paypalSdkLoaded ||
-      !paypal()
-    )
+    if (!paypalSdkLoaded) return;
+    if (paypalSdkFailed || !paypal()) {
+      setError('PayPal checkout is unavailable right now');
+      setView('course');
       return;
+    }
+    if (buttonsRendered.current || !paypalContainer.current) return;
 
     paypal()!.Buttons({
       createOrder: (_data, actions) => {
@@ -108,7 +133,11 @@ export function App() {
           });
           if (!res.ok) throw new Error('Failed to capture order');
           const captureData = await res.json();
-          setAccessToken(captureData.accessToken ?? data.orderID);
+          const token = typeof captureData.accessToken === 'string' ? captureData.accessToken : null;
+          if (!token) throw new Error('Capture response had no access token');
+          localStorage.setItem(TOKEN_KEY, token);
+          window.history.replaceState(null, '', `?t=${token}`);
+          setAccessToken(token);
           setView('lessons');
         } catch (e) {
           setError(e instanceof Error ? e.message : 'Capture failed');
@@ -119,10 +148,13 @@ export function App() {
         setError(err instanceof Error ? err.message : 'PayPal checkout failed');
         setView('course');
       },
-    }).render('#paypal-button-container');
+    }).render('#paypal-button-container').catch(() => {
+      setError('PayPal checkout is unavailable right now');
+      setView('course');
+    });
 
     buttonsRendered.current = true;
-  }, [view, paypalSdkLoaded]);
+  }, [view, paypalSdkLoaded, paypalSdkFailed]);
 
   if (view === 'course') {
     return (
@@ -179,6 +211,17 @@ export function App() {
       <p className="mb-6 text-sm text-neutral-500">
         Your access is being tracked (time, IP, device) as proof of purchase.
       </p>
+
+      <div className="mb-6 rounded border border-green-200 bg-green-50 p-4">
+        <h2 className="text-sm font-semibold text-green-900">Your private course link</h2>
+        <p className="mt-1 break-all font-mono text-xs text-green-800">
+          {window.location.origin}
+          {window.location.pathname}?t={accessToken}
+        </p>
+        <p className="mt-1 text-xs text-green-800">
+          Bookmark it — anyone with this link can open your course.
+        </p>
+      </div>
 
       <div className="space-y-4">
         <h2 className="text-lg font-semibold border-b pb-2">Lessons</h2>
