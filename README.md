@@ -7,7 +7,7 @@ Built for the PayPal AI Hackathon. Team plan: [PLAN.md](PLAN.md). Team rules: [I
 
 ## Repo
 ```
-apps/api        NestJS + Prisma (Mike). Pipeline module in src/pipeline (Fitsum)
+apps/api        NestJS + Prisma, including the AI pipeline in src/pipeline (Mike)
 apps/web        Seller dashboard, Vite + React (Moges)
 apps/store      Demo course store with PayPal checkout (Moges)
 packages/shared The contract: Zod schemas, types, the five test scenarios

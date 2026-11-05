@@ -1,4 +1,4 @@
-// Fitsum's module. Signatures are the contract (INTEGRATION.md section 6).
+// The AI pipeline. Signatures are the contract (INTEGRATION.md section 6).
 // Pure inputs and outputs: no Prisma, no PayPal client in here (eslint enforces it).
 import type {
   Decision,

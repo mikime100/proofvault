@@ -1,4 +1,4 @@
-# pipeline (owner: Fitsum)
+# pipeline (owner: Mike)
 
 Turns a `DisputeContext` into a `PipelineResult`. Mike's code loads the data, calls
 `runPipeline`, saves the result and runs the PayPal action in `result.decision`.

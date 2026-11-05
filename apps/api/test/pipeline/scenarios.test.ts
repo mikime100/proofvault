@@ -1,5 +1,5 @@
 // Acceptance tests for the pipeline: the five shared scenarios (INTEGRATION.md section 5).
-// Fitsum: replace each it.todo with a real test. Use a fake LlmClient, never the network.
+// Replace each it.todo with a real test. Use a fake LlmClient, never the network.
 import { DEFAULT_RULES, SCENARIOS } from '@proofvault/shared/fixtures';
 import { describe, expect, it } from 'vitest';
 

@@ -19,7 +19,7 @@ export default tseslint.config(
     rules: reactHooks.configs.recommended.rules,
   },
   {
-    // Fitsum's pipeline gets data passed in. It must never reach for the database or PayPal itself.
+    // The pipeline gets data passed in. It must never reach for the database or PayPal itself.
     files: ['apps/api/src/pipeline/**', 'apps/api/src/rules/**'],
     rules: {
       'no-restricted-imports': [
