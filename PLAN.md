@@ -199,6 +199,7 @@ Frozen in `packages/shared`. Changing one needs a PR all three see.
 | POST | `/disputes/:id/actions` `{type: submit, offer, accept}` | A/B | web |
 | POST | `/disputes/:id/sandbox/:step` `{require-evidence, adjudicate}` | A | web |
 | POST | `/disputes/sync` (manual poll) | A | web |
+| POST | `/disputes/fetch` `{caseId}` (load one case by id; the sandbox list lags, see docs/paypal-sandbox-notes.md) | A | web |
 | GET/PUT | `/seller/rules` | B | web |
 | GET | `/analytics/summary`, `/analytics/by-reason` | A | AG Studio |
 | GET | `/triage` (rows + deadline events) | A | Bryntum |

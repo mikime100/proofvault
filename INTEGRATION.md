@@ -207,7 +207,7 @@ Sends `POST /track`. The server sets the time and IP, never the browser. Under 2
 | web | Dispute detail | Timeline, each claim with its linked records highlighted, "removed by guardrail" box, score + reasons, action buttons |
 | web | Approval | One click approve/submit, offer, accept; result toast; action log updates |
 | web | Rules | Edit the seller rules JSON fields as a form |
-| web | Sandbox controls | Buttons: sync now, require evidence, adjudicate |
+| web | Sandbox controls | Buttons: sync now, require evidence, adjudicate; a "fetch by case ID" box (`PP-...`) |
 | web | Triage | Bryntum board: disputes against deadlines, warning colour near deadline |
 | web | Analytics | AG Studio: win rate by reason, money recovered, Studio agent question box |
 
