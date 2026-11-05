@@ -57,7 +57,7 @@ Settled by grilling the contract. Code already matches. Change only through a PR
 - TypeScript strict mode in every package
 - **Vitest** for every test (one test runner across the repo, Mike sets it up for NestJS too)
 - ESLint + Prettier with the repo config. Do not change the config in your own PR.
-- Claude Code with the `mattpocock-skills` plugin (enabled in `.claude/settings.json`, so Claude Code offers to install it when you open the repo). Use: `tdd` for pipeline logic (Fitsum), `code-review` before every PR, `diagnosing-bugs` for anything broken, `grilling` to pressure-test a plan or contract change.
+- Any AI coding tool is fine. `AGENTS.md` holds the rules every tool reads (Claude Code reads it through `CLAUDE.md`). Claude Code users also get the `mattpocock-skills` plugin, enabled in `.claude/settings.json`: `tdd` for pipeline logic, `code-review` before every PR, `diagnosing-bugs` for anything broken. Mike uses `to-tickets` and `triage` to run the GitHub Issues board.
 
 ### One command decides if code is ready
 ```bash
