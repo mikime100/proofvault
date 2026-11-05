@@ -5,7 +5,6 @@ import type {
   DisputeContext,
   DisputeReason,
   Draft,
-  CheckResult,
   LlmClient,
   Money,
   PipelineResult,
@@ -18,9 +17,8 @@ const todo = (name: string): never => {
   throw new Error(`pipeline.${name} not implemented yet`);
 };
 
-export function buildTimeline(_input: DisputeContext): Timeline {
-  return todo('buildTimeline');
-}
+export { buildTimeline } from './timeline';
+export { checkClaims } from './claims';
 
 export async function draftResponse(
   _timeline: Timeline,
@@ -28,19 +26,6 @@ export async function draftResponse(
   _llm: LlmClient,
 ): Promise<Draft> {
   return todo('draftResponse');
-}
-
-/**
- * A claim is accepted only if:
- * - it cites at least one record, and every cited record is in this timeline
- * - dates are written as YYYY-MM-DD (any other date format is rejected)
- * - any date written in it matches the date of one of its cited records
- * - any count in it ("4 lessons", "3 days") equals the number of cited records of that type,
- *   or the number of distinct days among them
- * Anything else in the text is accepted on the strength of its citations.
- */
-export function checkClaims(_draft: Draft, _timeline: Timeline): CheckResult {
-  return todo('checkClaims');
 }
 
 export function scoreDispute(_timeline: Timeline, _reason: DisputeReason): Score {
