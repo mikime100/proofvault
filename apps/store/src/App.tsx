@@ -5,7 +5,26 @@ import { ShieldCheck, Play, Download } from 'lucide-react';
 
 type View = 'course' | 'paying' | 'lessons';
 
+// Minimal types for the PayPal JS SDK v6 Buttons API we use. The SDK is loaded
+// from the CDN and does not ship types with this setup.
+interface PayPalOrderActions {
+  order: {
+    create(options: {
+      purchase_units: { amount: { value: string; currency_code: string } }[];
+    }): Promise<string>;
+  };
+}
+interface PayPalButtonOptions {
+  createOrder: (_data: unknown, actions: PayPalOrderActions) => Promise<string>;
+  onApprove: (data: { orderID: string }) => Promise<void>;
+  onError: (err: unknown) => void;
+}
+interface PayPalSDK {
+  Buttons(options: PayPalButtonOptions): { render(selector: string): Promise<void> };
+}
+
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3333';
+const paypal = () => (window as { paypal?: PayPalSDK }).paypal;
 
 export function App() {
   const [view, setView] = useState<View>('course');
@@ -23,7 +42,7 @@ export function App() {
         accessToken,
       });
     }
-  }, [accessToken, API_URL]);
+  }, [accessToken]);
 
   const track = useCallback(
     (type: 'login' | 'lesson_view' | 'download' | 'activation', meta?: Record<string, string>) => {
@@ -35,7 +54,7 @@ export function App() {
   // Load PayPal JS SDK v6 from CDN.
   useEffect(() => {
     const clientId = import.meta.env.VITE_PAYPAL_CLIENT_ID;
-    if (!clientId || (window as any).paypal) {
+    if (!clientId || paypal()) {
       setPaypalSdkLoaded(true);
       return;
     }
@@ -65,12 +84,12 @@ export function App() {
       buttonsRendered.current ||
       !paypalContainer.current ||
       !paypalSdkLoaded ||
-      !(window as any).paypal
+      !paypal()
     )
       return;
 
-    (window as any).paypal.Buttons({
-      createOrder: (_data: unknown, actions: any) => {
+    paypal()!.Buttons({
+      createOrder: (_data, actions) => {
         return actions.order.create({
           purchase_units: [
             {
@@ -82,7 +101,7 @@ export function App() {
           ],
         });
       },
-      onApprove: async (data: any) => {
+      onApprove: async (data) => {
         try {
           const res = await fetch(`${API_URL}/store/orders/${data.orderID}/capture`, {
             method: 'POST',
@@ -96,14 +115,14 @@ export function App() {
           setView('course');
         }
       },
-      onError: (err: any) => {
-        setError(err?.message ?? 'PayPal checkout failed');
+      onError: (err) => {
+        setError(err instanceof Error ? err.message : 'PayPal checkout failed');
         setView('course');
       },
     }).render('#paypal-button-container');
 
     buttonsRendered.current = true;
-  }, [view, paypalSdkLoaded, API_URL, DEMO_PRODUCT, createOrder, setView, setError]);
+  }, [view, paypalSdkLoaded]);
 
   if (view === 'course') {
     return (
