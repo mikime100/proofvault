@@ -7,7 +7,7 @@ Built for the PayPal AI Hackathon. Team plan: [PLAN.md](PLAN.md). Team rules: [I
 
 ## Repo
 ```
-apps/api        NestJS + Prisma (Mike). Pipeline module in src/pipeline (Fitsum)
+apps/api        NestJS + Prisma, including the AI pipeline in src/pipeline (Mike)
 apps/web        Seller dashboard, Vite + React (Moges)
 apps/store      Demo course store with PayPal checkout (Moges)
 packages/shared The contract: Zod schemas, types, the five test scenarios
@@ -42,7 +42,16 @@ pnpm dev
 ```
 API on http://localhost:3000, dashboard on http://localhost:5173, store on http://localhost:5174.
 
-No Docker? Any local Postgres 16 works; put its URL in `DATABASE_URL` in `apps/api/.env`.
+No Docker? Any local Postgres 16 or newer works. Create the dev user and database once (asks for your `postgres` password):
+```powershell
+& "C:\Program Files\PostgreSQL\17\bin\psql.exe" -U postgres -h localhost -c "CREATE ROLE proofvault LOGIN PASSWORD 'proofvault' CREATEDB;"
+```
+```powershell
+& "C:\Program Files\PostgreSQL\17\bin\psql.exe" -U postgres -h localhost -c "CREATE DATABASE proofvault OWNER proofvault;"
+```
+Then `pnpm db:reset` as above.
+
+Using an AI coding agent? Prisma refuses to run `db:reset` for an agent without your explicit consent, because it wipes the database. On a fresh, empty database the agent can instead run `prisma migrate deploy` and `prisma db seed` from `apps/api`.
 
 ## Commands
 | Command | What it does |

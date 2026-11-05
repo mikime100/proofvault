@@ -1,12 +1,15 @@
 // Day-one risk test (HANDOFF.md section 4): can we reach PayPal sandbox Orders and Disputes?
-// Run: pnpm smoke   (reads apps/api/.env)
+// Run: pnpm smoke             (reads apps/api/.env)
+//      pnpm smoke <orderId>   capture an order the buyer has approved, then stop
+//      pnpm smoke PP-...      fetch one dispute by case id, then stop
 //
 // Steps:
 //   1. OAuth token
-//   2. Create a $49 order, print the approval link (pay it as the sandbox buyer)
+//   2. Create a $49 order, print the approval link (approve it as the sandbox buyer)
 //   3. List disputes, show the first one in full
-// To get a dispute: pay the order as the sandbox buyer, then open a dispute from the
-// buyer account at sandbox.paypal.com (Resolution Center), then run this again.
+// To get a dispute: approve the order as the buyer, capture it with `pnpm smoke <orderId>`
+// (approving alone moves no money), open a dispute from the buyer account at
+// sandbox.paypal.com, then run `pnpm smoke` again.
 
 const BASE =
   process.env.PAYPAL_ENV === 'live' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com';
@@ -47,15 +50,55 @@ async function main() {
   const hasDisputes = scope.includes('disputes');
   console.log(`   Disputes scope in token: ${hasDisputes ? 'yes' : 'NO (enable Disputes in the app features)'}`);
 
+  // Dispute mode: fetch one case by id. The list endpoint can lag minutes behind a new case,
+  // fetching by id works straight away.
+  const arg = process.argv[2];
+  if (arg?.startsWith('PP-')) {
+    const one = await call(token, 'GET', `/v1/customer/disputes/${arg}`);
+    if (one.status !== 200) fail(`Dispute ${arg}: HTTP ${one.status} ${JSON.stringify(one.json)}`);
+    const tx = (one.json.disputed_transactions as { seller_transaction_id: string }[])[0];
+    console.log(`Dispute ${arg}: ${String(one.json.status)} / ${String(one.json.dispute_life_cycle_stage)}`);
+    console.log(`   Reason: ${String(one.json.reason)}`);
+    console.log(`   Seller transaction (our capture id): ${tx?.seller_transaction_id}`);
+    console.log('\nPASS: dispute readable by id.');
+    return;
+  }
+
+  // Capture mode: take the money for an order the buyer approved.
+  const captureId = arg;
+  if (captureId) {
+    const cap = await call(token, 'POST', `/v2/checkout/orders/${captureId}/capture`);
+    if (cap.status !== 201) fail(`Capture: HTTP ${cap.status} ${JSON.stringify(cap.json)}`);
+    const units = cap.json.purchase_units as { payments: { captures: { id: string }[] } }[];
+    console.log(`Captured order ${captureId}: ${String(cap.json.status)}`);
+    console.log(`   Capture id: ${units[0]?.payments.captures[0]?.id}`);
+    console.log('Now open a dispute for this payment as the buyer at sandbox.paypal.com.');
+    return;
+  }
+
   // 2. Order
   const order = await call(token, 'POST', '/v2/checkout/orders', {
     intent: 'CAPTURE',
     purchase_units: [{ amount: { currency_code: 'USD', value: '49.00' }, description: 'Smoke test course' }],
+    // Without a return_url PayPal shows "Continue to Review Order" and loops back to itself.
+    // PAY_NOW + return_url: the buyer clicks Pay Now and lands on example.com (blank is fine).
+    payment_source: {
+      paypal: {
+        experience_context: {
+          user_action: 'PAY_NOW',
+          return_url: 'https://example.com/approved',
+          cancel_url: 'https://example.com/cancelled',
+        },
+      },
+    },
   });
-  if (order.status !== 201) fail(`Create order: HTTP ${order.status} ${JSON.stringify(order.json)}`);
+  // 200 + PAYER_ACTION_REQUIRED when payment_source is given, 201 otherwise.
+  if (order.status !== 200 && order.status !== 201) fail(`Create order: HTTP ${order.status} ${JSON.stringify(order.json)}`);
   const links = order.json.links as { rel: string; href: string }[];
   console.log(`2. Order OK: ${String(order.json.id)}`);
-  console.log(`   Approve as sandbox buyer: ${links.find((l) => l.rel === 'approve')?.href}`);
+  const approve = links.find((l) => l.rel === 'payer-action' || l.rel === 'approve')?.href;
+  console.log(`   Approve as sandbox buyer: ${approve}`);
+  console.log(`   Then capture it: pnpm smoke ${String(order.json.id)}`);
 
   // 3. Disputes
   const list = await call(token, 'GET', '/v1/customer/disputes?page_size=10');

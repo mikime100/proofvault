@@ -100,7 +100,7 @@ export const Dispute = z.object({
 });
 export type Dispute = z.infer<typeof Dispute>;
 
-// ---------- Pipeline (Fitsum) ----------
+// ---------- Pipeline ----------
 
 /** Everything the pipeline needs, loaded by the api and passed in. */
 export const DisputeContext = z.object({

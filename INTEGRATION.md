@@ -1,12 +1,13 @@
 # ProofVault: Team Standard and Deliverables
 
-The rules all three of us follow, and exactly what each person hands to Mike for integration.
+The rules we follow, and exactly what each person hands to Mike for integration.
+
+**Team change, Nov 6:** Fitsum is no longer on the team. Mike took over the AI agent and pipeline (slice B). The rules below are unchanged; where they say "Fitsum" before, they now mean Mike. Current owners and dates live on the GitHub Issues board.
 Read this before writing code. It goes with PLAN.md.
 
 | Person | Slice | Role in integration |
 |---|---|---|
-| **Mike** (A) | PayPal + backend core | Integrator. Owns `main`, the shared contract, CI and Render. |
-| **Fitsum** (B) | AI agent + pipeline | Delivers the pipeline module. |
+| **Mike** (A + B) | PayPal + backend core, AI agent + pipeline | Integrator. Owns `main`, the shared contract, CI and Render. |
 | **Moges** (C) | Frontend + demo | Delivers store, dashboard, SDK, video. |
 
 ---
@@ -18,7 +19,7 @@ Read this before writing code. It goes with PLAN.md.
 So:
 - Mike's API tests check that every response passes its schema.
 - Moges's API client checks every response it receives with the same schema.
-- Fitsum's functions take and return those same types.
+- The pipeline functions take and return those same types.
 
 If someone changes a shape, the other two get a TypeScript error the same day, not a broken demo on Nov 11.
 
@@ -28,7 +29,7 @@ On top of that, we share **five fixed test scenarios** (section 5). Every slice 
 
 ## 2. Contract decisions (agreed Nov 4)
 
-Settled by grilling the contract. Code already matches. Change only through a PR all three see.
+Settled by grilling the contract. Code already matches. Change only through a PR Mike and Moges both see.
 
 | # | Decision |
 |---|---|
@@ -57,7 +58,7 @@ Settled by grilling the contract. Code already matches. Change only through a PR
 - TypeScript strict mode in every package
 - **Vitest** for every test (one test runner across the repo, Mike sets it up for NestJS too)
 - ESLint + Prettier with the repo config. Do not change the config in your own PR.
-- Claude Code with the `mattpocock-skills` plugin (enabled in `.claude/settings.json`, so Claude Code offers to install it when you open the repo). Use: `tdd` for pipeline logic (Fitsum), `code-review` before every PR, `diagnosing-bugs` for anything broken, `grilling` to pressure-test a plan or contract change.
+- Any AI coding tool is fine. `AGENTS.md` holds the rules every tool reads (Claude Code reads it through `CLAUDE.md`). Claude Code users also get the `mattpocock-skills` plugin, enabled in `.claude/settings.json`: `tdd` for pipeline logic, `code-review` before every PR, `diagnosing-bugs` for anything broken. Mike uses `to-tickets` and `triage` to run the GitHub Issues board.
 
 ### One command decides if code is ready
 ```bash
@@ -79,8 +80,7 @@ You only edit your own folders. Need a change somewhere else? Ask the owner, or 
 
 | Owner | Folders |
 |---|---|
-| Mike | `apps/api/src/{paypal,store,tracking,webhooks,disputes,analytics,triage,db}`, `apps/api/prisma`, `packages/shared` (others propose, Mike merges), `scripts/`, `render.yaml`, `.github/` |
-| Fitsum | `apps/api/src/{pipeline,agent,rules}`, `apps/api/test/pipeline` |
+| Mike | `apps/api/src/{pipeline,agent,rules}`, `apps/api/src/{paypal,store,tracking,webhooks,disputes,analytics,triage,db}`, `apps/api/prisma`, `packages/shared` (others propose, Mike merges), `scripts/`, `render.yaml`, `.github/` |
 | Moges | `apps/web`, `apps/store`, `packages/sdk`, `docs/` |
 
 ### Data rules (these cause most integration bugs, so they are fixed)
@@ -99,10 +99,10 @@ You only edit your own folders. Need a change somewhere else? Ask the owner, or 
 Never in git. Each app has a `.env.example` listing every variable with a fake value. Real values: `apps/api/.env` for the api, `apps/web/.env` and `apps/store/.env` for the frontends (all ignored by git) and Render env settings. Mike shares the sandbox keys privately.
 
 ### Branches and PRs
-- Branch names: `mike/...`, `fitsum/...`, `moges/...`
+- Branch names: `mike/...`, `moges/...`
 - Small PRs, merged at least once a day. A branch older than 2 days is a warning sign.
 - Every PR fills in the template (section 7).
-- Mike merges. Mike's own PRs get a quick look from Fitsum or Moges.
+- Mike merges. Mike's own PRs get a quick look from Moges, or a `code-review` pass when Moges is busy.
 
 ---
 
@@ -110,10 +110,10 @@ Never in git. Each app has a `.env.example` listing every variable with a fake v
 
 | Level | What | Who | Tool |
 |---|---|---|---|
-| Unit | Pure logic: timeline, claim check, score, rules engine, SDK payload | Fitsum, Moges (SDK) | Vitest |
-| Contract | API responses and pipeline outputs pass the shared Zod schemas | Mike (API side), Fitsum (pipeline side), Moges (client side, at runtime) | Vitest + Zod |
+| Unit | Pure logic: timeline, claim check, score, rules engine, SDK payload | Mike, Moges (SDK) | Vitest |
+| Contract | API responses and pipeline outputs pass the shared Zod schemas | Mike (API and pipeline side), Moges (client side, at runtime) | Vitest + Zod |
 | Integration | API against real local Postgres: webhook duplicates, `/track`, disputes endpoints | Mike | Vitest + supertest |
-| AI eval | Real Claude call on the 5 scenarios, checks the rules in section 5 | Fitsum | `pnpm eval:draft` script |
+| AI eval | Real Claude call on the 5 scenarios, checks the rules in section 5 | Mike | `pnpm eval:draft` script |
 | Click path | Manual run of the demo flow on staging | Moges writes it, Mike runs it at each checkpoint | Checklist in `docs/click-path.md` |
 
 What we do **not** test: UI components, CSS, PayPal itself. The click path covers the UI.
@@ -144,9 +144,9 @@ Default seller rules for the scenarios:
 
 ## 6. What each person delivers to Mike
 
-### Fitsum delivers: the pipeline module
+### Mike delivers: the pipeline module (taken over from Fitsum)
 
-**What it is:** code in `apps/api/src/pipeline`, `agent`, `rules` that turns dispute data into a checked evidence package and a decision. **Fitsum's code never calls Prisma or PayPal directly.** Mike loads the data and passes it in; Fitsum returns results; Mike saves them and runs the PayPal call. This keeps Fitsum's work fully testable without the database or the sandbox.
+**What it is:** code in `apps/api/src/pipeline`, `agent`, `rules` that turns dispute data into a checked evidence package and a decision. **Pipeline code never calls Prisma or PayPal directly.** The API layer loads the data and passes it in; the pipeline returns results; the API layer saves them and runs the PayPal call. Now that one person writes both sides, the rule stays for a different reason: it keeps the pipeline fully testable without the database or the sandbox.
 
 **Interfaces (types in `packages/shared`):**
 ```ts
@@ -161,7 +161,7 @@ runPipeline(input: DisputeContext, rules: SellerRules, deps: { llm: LlmClient })
 ```
 `DisputeContext` = dispute + order (or null) + access events. `PipelineResult` = timeline + accepted claims + rejected claims + final response text + score + reasons + decision.
 
-**Acceptance (Mike checks all of these before merging):**
+**Acceptance (Mike checks all of these before closing the tickets):**
 - [ ] All five scenarios pass as unit tests with a fake LLM
 - [ ] `pnpm eval:draft` with real Claude: S1 to S4 give the expected decision, zero invented claims get through, output printed as a pass/fail table
 - [ ] Same input twice gives the same score (score is code, not the LLM)
@@ -173,11 +173,10 @@ runPipeline(input: DisputeContext, rules: SellerRules, deps: { llm: LlmClient })
 **Delivery dates:**
 | Date | Deliverable |
 |---|---|
-| Nov 5 EOD | `buildTimeline`, `checkClaims`, tests for S4, S5 |
-| Nov 6 EOD | `draftResponse`, `scoreDispute`, `explainScore`, PDF, tests S1 to S3, first `eval:draft` run |
-| Nov 7 EOD | `decide`, `runPipeline`, Render Workflows wiring (or pg-boss fallback, decided by Nov 7 noon) |
-| Nov 9 EOD | Agent Toolkit tools, edge cases, eval passing |
-| Nov 10 | AG Studio agent help with Moges |
+| Nov 6 EOD | `buildTimeline`, `checkClaims`, tests for S4, S5 (#6) |
+| Nov 8 EOD | `draftResponse`, `eval:draft` (#11); `scoreDispute`, `explainScore`, PDF (#12); `decide`, `runPipeline` (#16) |
+| Nov 9 EOD | Pipeline runs in the api right after intake (#20, Render Workflows cut) |
+| Nov 10 | Agent Toolkit tools only if #22 has passed (#23, stretch) |
 | Nov 11 | Tools list text for Devpost (AI model, how each PayPal API is used) |
 
 ### Moges delivers: store, dashboard, SDK, video
@@ -207,7 +206,7 @@ Sends `POST /track`. The server sets the time and IP, never the browser. Under 2
 | web | Dispute detail | Timeline, each claim with its linked records highlighted, "removed by guardrail" box, score + reasons, action buttons |
 | web | Approval | One click approve/submit, offer, accept; result toast; action log updates |
 | web | Rules | Edit the seller rules JSON fields as a form |
-| web | Sandbox controls | Buttons: sync now, require evidence, adjudicate |
+| web | Sandbox controls | Buttons: sync now, require evidence, adjudicate; a "fetch by case ID" box (`PP-...`) |
 | web | Triage | Bryntum board: disputes against deadlines, warning colour near deadline |
 | web | Analytics | AG Studio: win rate by reason, money recovered, Studio agent question box |
 
@@ -230,15 +229,17 @@ Sends `POST /track`. The server sets the time and IP, never the browser. Under 2
 | Nov 10 EOD | AG Studio analytics |
 | Nov 11 | Video (under 3 min), README, Devpost text |
 
-### Mike delivers (to Fitsum and Moges)
+### Mike delivers (to Moges)
 They are blocked without these, so they come first.
 | Date | Deliverable |
 |---|---|
-| Nov 4 | Repo scaffold, `pnpm check`, CI, `docker compose`, `packages/shared` schemas and types, 5 scenario fixtures + seed, sandbox smoke test result |
-| Nov 5 | `/store/orders`, `/track`, webhook + poll, read endpoints for disputes on seed data |
-| Nov 6 | `provide-evidence`, sandbox stage calls, staging URL with the walking skeleton |
-| Nov 7 | `make-offer`, `accept-claim`, action executor that runs Fitsum's `Decision` |
-| Nov 9 | `/analytics/*`, `/triage` |
+| Nov 4 to 5 (done) | Repo scaffold, `pnpm check`, CI, `docker compose`, `packages/shared` schemas and types, 5 scenario fixtures + seed, sandbox smoke test passed |
+| Nov 6 | Read endpoints for disputes on seed data (#5) |
+| Nov 7 | Render staging URLs (#2), `/store/orders` + capture (#3), `/track` (#4), webhook + poll + fetch by case ID (#10) |
+| Nov 9 | `provide-evidence`, sandbox stage calls, walking skeleton on staging (#18, #19) |
+| Nov 10 | `make-offer`, `accept-claim`, action executor (#21); real end to end (#22) |
+
+No analytics or triage endpoints (cut Nov 6): the Bryntum board and AG Studio compute their numbers in the browser from the dispute list.
 
 ---
 
@@ -273,5 +274,5 @@ Command, URL or screen to look at.
    - **Nov 8:** real sandbox dispute end to end
    - **Nov 10 EOD:** feature freeze, all screens done
    - **Nov 11 12:00 UTC:** code freeze
-5. **Contract change:** propose in a PR to `packages/shared`, all three see it, Mike merges. No silent changes.
+5. **Contract change:** propose in a PR to `packages/shared`, Mike and Moges both see it, Mike merges. No silent changes.
 6. **Blocked for more than 2 hours:** say so in the group chat right away, do not wait for the evening sync.
