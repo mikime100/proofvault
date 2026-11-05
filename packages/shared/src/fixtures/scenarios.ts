@@ -1,6 +1,6 @@
 // The five shared scenarios from INTEGRATION.md section 5.
 // The seed loads exactly this data, and every slice tests against it.
-// Change these only through a PR Mike and Moges both see.
+// Change these only through a PR all three see.
 import type {
   AccessEvent,
   DecisionAction,

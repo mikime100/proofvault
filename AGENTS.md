@@ -9,8 +9,8 @@ Read by any AI coding tool (Claude Code reads it through `CLAUDE.md`). Humans: t
 
 ## Rules
 - `pnpm check` must pass before any PR (typecheck, lint, tests, build).
-- Only edit the folders your owner owns (INTEGRATION.md section 3). Mike: all of `apps/api` (including pipeline, agent, rules) and the shared contract. Moges: `apps/web`, `apps/store`, `packages/sdk`, `docs/`.
-- Anything that crosses between people is defined once in `packages/shared` (Zod schemas). Change it only through a PR both Mike and Moges see.
+- Only edit the folders your owner owns (INTEGRATION.md section 3). Mike: api and shared contract. Fitsum: `apps/api/src/{pipeline,agent,rules}`. Moges: `apps/web`, `apps/store`, `packages/sdk`, `docs/`.
+- Anything that crosses between people is defined once in `packages/shared` (Zod schemas). Change it only through a PR all three see.
 - Pipeline code (`pipeline/`, `rules/`) never imports Prisma or the PayPal client. ESLint enforces it.
 - Money is `{ value: "49.00", currency: "USD" }`. Times are UTC ISO strings. IPs are masked in every API response.
 - Never commit secrets. Real keys live in `apps/api/.env`, `apps/web/.env`, `apps/store/.env` (all git-ignored).

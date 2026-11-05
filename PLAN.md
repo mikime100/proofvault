@@ -34,8 +34,8 @@ The MVP is doable for 3 people in 8 days **if** we drop every stretch item until
 ### My opinions on the handoff
 - **Win score must not be a number the LLM makes up.** Judges and sellers will not trust it, and it changes between runs. Compute it from evidence features with fixed weights per dispute reason. The LLM only explains it. Honest, testable, repeatable.
 - **Do not depend on webhooks alone.** Keep the webhook, add a poll. The video must not stall waiting for PayPal.
-- **Scope cuts (Nov 6, team of two):** (1) no analytics or triage endpoints: Bryntum and AG Studio compute from the dispute list in the browser; (2) no Render Workflows or job queue: the pipeline runs in the API server right after intake; (3) PayPal Agent Toolkit is a stretch item; (4) Moges does the AG Studio agent alone.
-- **Render Workflows is a risk, not a given** (superseded: cut on Nov 6, see above). It is new. Write each pipeline step as a plain function that is safe to run twice. Wire those into Render Workflows; if it fights us for more than half a day, run the same functions with pg-boss (a job queue that lives in Postgres, so no Redis). The sponsor prize is not worth losing the core flow.
+- **Scope cut (Nov 6):** no analytics or triage endpoints; Bryntum and AG Studio compute from the dispute list in the browser. (Three other cuts made that morning were undone the same day when Fitsum came back.)
+- **Render Workflows is a risk, not a given.** It is new. Write each pipeline step as a plain function that is safe to run twice. Wire those into Render Workflows; if it fights us for more than half a day, run the same functions with pg-boss (a job queue that lives in Postgres, so no Redis). The sponsor prize is not worth losing the core flow.
 - **No real login.** One seeded demo seller. Login screens are time with zero judging value.
 - **Vite, not Next.js**, for the dashboard. It is a single-page app behind no SEO need, and AG Studio and Bryntum are client-side anyway.
 - **Store is its own tiny static site** on a different URL. That makes the "drop our snippet into any store" story real on video.
@@ -49,7 +49,7 @@ The MVP is doable for 3 people in 8 days **if** we drop every stretch item until
 | Product | **Mini course** (4 short lessons + 1 bonus PDF) | Gives several event types over several days (login, lesson views, download). A template pack only gives one download, which makes a weak timeline. |
 | ORM | **Prisma** | Fastest schema-to-types loop, simple migrations, works fine in NestJS. |
 | Package manager | **pnpm workspaces** | One repo, shared types package, one install. |
-| Roles | Mike (A + B), Moges (C) | Fitsum left on Nov 6; Mike took over B. Mike integrates. See INTEGRATION.md. |
+| Roles | Mike (A), Fitsum (B), Moges (C) | Mike integrates. See INTEGRATION.md. |
 | Seller stat for the video | Moges finds it by Nov 9 | PayPal and Chargebacks911 reports are the first place to look. Must be cited. |
 
 **Note on STACK.md:** AG Grid/AG Studio and Bryntum are deliberate exceptions to the shadcn + Recharts standard, because they are sponsor tools. Everything else in the dashboard uses shadcn/ui, Tailwind, lucide icons, Sonner toasts, TanStack Query.
@@ -79,7 +79,7 @@ The MVP is doable for 3 people in 8 days **if** we drop every stretch item until
          ▼                            ▼
   PostgreSQL (Render)          PayPal Sandbox APIs
                                (Orders v2, Disputes, Webhooks)
-  The pipeline/ steps run inside the api right after intake (Render Workflows cut on Nov 6)
+  Render Workflows runs the pipeline/ steps (fallback: in-process after intake)
 ```
 
 ### Repo layout
@@ -160,14 +160,14 @@ Each person owns a vertical slice and its tests. Owners merge their own PRs afte
 - Outcome writing on resolve
 - Owns `render.yaml`, env vars, Render services, PayPal app config
 
-### Mike (B): AI agent + pipeline (taken over from Fitsum, Nov 6)
+### Fitsum (B): AI agent + pipeline
 - Timeline builder, evidence PDF generator
 - Claude draft with structured output, claim checker, unit tests on seed data (this code must be tested, it is our main promise)
 - Win score rules + reasons
 - Auto-action rules engine (reads seller rules JSON, returns a decision)
-- Agent Toolkit wiring (stretch since Nov 6)
-- Run the pipeline in the background after intake (in-process; Render Workflows cut)
-- Helps Moges with the AG Studio agent on Nov 10 if time allows (it is an AI feature)
+- Agent Toolkit wiring
+- Render Workflows runner, in-process fallback after Nov 8 noon
+- Helps Moges with the AG Studio agent on Nov 10 (it is an AI feature)
 
 ### Moges (C): frontend + product/demo
 - `apps/store`: course landing page, SDK v6 checkout, lesson pages, bonus download, tracking snippet in `packages/sdk`
@@ -208,24 +208,22 @@ Frozen in `packages/shared`. Changing one needs a PR all three see.
 
 ---
 
-## 7. Day-by-day (revised Nov 6 for a team of two)
+## 7. Day-by-day (revised Nov 6)
 
-Fitsum left on Nov 6. Mike took over the AI pipeline, and four cuts make it fit (section 1, "Scope cuts"). The GitHub Issues board holds the live target dates; numbers below are issue numbers.
+The GitHub Issues board holds the live owners and target dates; numbers below are issue numbers. Fitsum's branch already covers most of #12 and #16, which buys back the time lost on Nov 5 to 6.
 
-| Day | Mike | Moges |
-|---|---|---|
-| Nov 4 to 5 (done) | Scaffold, CI, shared contract, scenarios, sandbox smoke test passed, contract grilled, board created | Read standard, store and dashboard on sample data |
-| **Fri Nov 6** | #1 database and CI, #5 dispute reads, #6 timeline + claim checker | #7 store pages, #8 dashboard on sample data |
-| **Sat Nov 7** | #2 Render deploy, #3 + #4 checkout and tracking, #10 intake | #14 dashboard on real API, #15 approval, rules, controls |
-| **Sun Nov 8** | #11 Claude draft + eval, #12 score + PDF, #16 runPipeline | #13 live checkout, #9 seller stat |
-| **Mon Nov 9** | #17 + #20 pipeline on intake, #18 submit + stage calls, then **#19 walking skeleton** | #25 Bryntum board |
-| **Tue Nov 10** | #21 executor, then **#22 real sandbox end to end**, #27 demo disputes | #26 AG Studio |
-| **Feature freeze end of Nov 10.** Stretch items (#23) stay cut unless #22 passed early. | | |
-| **Wed Nov 11** | Tools list for Devpost, drive the demo on video | #28 video, README, Devpost text |
-| **Code freeze 12:00 UTC.** Only demo-breaking fixes after this. | | |
-| **Thu Nov 12** | Make repo public, final deploy check | **Submit by 12:00 UTC** |
-
-There is no slack left in this schedule. If a day slips, cut from the Moges column's polish first (AG Studio agent, Bryntum styling), never from #19 or #22.
+| Day | Mike | Fitsum | Moges |
+|---|---|---|---|
+| Nov 4 to 6 (done) | Scaffold, CI, contract, smoke test passed, board, #1, #5, #6 | Pipeline core on a branch (first version of #12, #16) | Store and dashboard in progress |
+| **Fri Nov 6** | Review Fitsum's branch, #2 Render deploy | Rebase and fixes from the #16 review, open PR | #7 store pages, #8 dashboard on sample data |
+| **Sat Nov 7** | #3 + #4 checkout and tracking, #10 intake | #11 real Claude client + `eval:draft`, #12 PDF masking | #14 dashboard on real API, #15 approval, rules, controls |
+| **Sun Nov 8** | #17 pipeline on intake, #18 submit + stage calls | #20 Render Workflows (decide by noon) | #13 live checkout, #9 seller stat |
+| **Mon Nov 9** | **#19 walking skeleton**, #21 executor | #23 Agent Toolkit, edge cases | #25 Bryntum board |
+| **Tue Nov 10** | **#22 real sandbox end to end**, #27 demo disputes | #26 Studio agent with Moges | #26 AG Studio |
+| **Feature freeze end of Nov 10.** | | | |
+| **Wed Nov 11** | Drive the demo on video | Tools list for Devpost | #28 video, README, Devpost text |
+| **Code freeze 12:00 UTC.** Only demo-breaking fixes after this. | | | |
+| **Thu Nov 12** | Make repo public, final deploy check | Check video is public, under 3 min | **Submit by 12:00 UTC** |
 
 **Why we pre-create disputes on Nov 10:** each sandbox order can be disputed once, and moving a dispute through stages takes several API calls. Recording with disputes already in place means the video shows a clean flow in one take.
 
@@ -252,7 +250,7 @@ One `render.yaml` blueprint creates everything:
 | `proofvault-web` | Static site | Free | $0 |
 | `proofvault-store` | Static site | Free | $0 |
 | `proofvault-db` | Postgres | Basic | ~$6/mo |
-| Pipeline | Runs inside `proofvault-api` (no extra service) | included | $0 |
+| Pipeline | Render Workflows (fallback: inside `proofvault-api`) | usage | small |
 
 All within the $50 Render credits. Do not use the free web service plan for the API: it sleeps when idle and the first request takes ~50 seconds, which kills webhooks and the live demo.
 
@@ -310,7 +308,7 @@ About $40 to $60 total out of pocket: Anthropic usage (~$10 to $30), anything ov
 - [ ] Public GitHub repo, README with setup and run steps, MIT LICENSE shown in About
 - [ ] Video under 3 minutes, public on YouTube, no copyrighted music, shows the real flow
 - [ ] Description of features
-- [ ] Tools used: Claude Sonnet 5.5, PayPal JS SDK v6, Orders v2, Disputes API (each endpoint), Webhooks, Agent Toolkit (only if the stretch lands), AG Studio, Bryntum, Render (hosting), APIMatic, Postman
+- [ ] Tools used: Claude Sonnet 5.5, PayPal JS SDK v6, Orders v2, Disputes API (each endpoint), Webhooks, Agent Toolkit, AG Studio, Bryntum, Render (hosting + Workflows), APIMatic, Postman
 - [ ] Submitted by Nov 12, 12:00 UTC
 
 ---
