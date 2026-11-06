@@ -1,5 +1,15 @@
 import { Body, Controller, Get, HttpCode, Param, Post, UseGuards } from '@nestjs/common';
-import { type DisputeDetail, type DisputeList, FetchDisputeRequest, type SyncResult } from '@proofvault/shared';
+import {
+  type ActionLogEntry,
+  DisputeActionRequest,
+  type DisputeDetail,
+  type DisputeList,
+  FetchDisputeRequest,
+  SandboxStep,
+  SandboxStepBody,
+  type SyncResult,
+} from '@proofvault/shared';
+import { ActionsService } from '../actions/actions.service';
 import { AppError } from '../common/api-error.filter';
 import { PasscodeGuard } from '../common/passcode.guard';
 import { DisputesService } from './disputes.service';
@@ -11,6 +21,7 @@ export class DisputesController {
   constructor(
     private readonly disputes: DisputesService,
     private readonly intake: IntakeService,
+    private readonly actions: ActionsService,
   ) {}
 
   @Get()
@@ -35,6 +46,29 @@ export class DisputesController {
     if (!parsed.success) throw new AppError(400, 'BAD_CASE_ID', 'caseId must look like PP-R-ABC-12345678');
     const row = await this.intake.ingest(parsed.data.caseId);
     return this.disputes.get(row.id);
+  }
+
+  /** The seller's buttons: submit evidence, offer, accept, message. Answers with the log entry. */
+  @Post(':id/actions')
+  @HttpCode(200)
+  @UseGuards(PasscodeGuard)
+  act(@Param('id') id: string, @Body() body: unknown): Promise<ActionLogEntry> {
+    const parsed = DisputeActionRequest.safeParse(body);
+    if (!parsed.success) throw new AppError(400, 'BAD_ACTION', 'type must be submit, offer, accept or message');
+    return this.actions.act(id, parsed.data, 'seller');
+  }
+
+  /** Sandbox only: require-evidence or adjudicate, for the demo. Body optional. */
+  @Post(':id/sandbox/:step')
+  @HttpCode(200)
+  @UseGuards(PasscodeGuard)
+  sandbox(@Param('id') id: string, @Param('step') step: string, @Body() body: unknown): Promise<ActionLogEntry> {
+    const parsedStep = SandboxStep.safeParse(step);
+    const parsedBody = SandboxStepBody.safeParse(body ?? {});
+    if (!parsedStep.success || !parsedBody.success) {
+      throw new AppError(400, 'BAD_SANDBOX_STEP', 'step must be require-evidence or adjudicate');
+    }
+    return this.actions.sandbox(id, parsedStep.data, parsedBody.data);
   }
 
   @Get(':id')
