@@ -27,7 +27,12 @@ services:
         sync: false
       - key: PAYPAL_WEBHOOK_ID
         sync: false
-      - key: ANTHROPIC_API_KEY
+      # Provider-neutral, so switching LLM never changes this file (decided Nov 6: DeepSeek).
+      - key: LLM_PROVIDER
+        value: deepseek
+      - key: LLM_MODEL
+        value: deepseek-chat
+      - key: LLM_API_KEY
         sync: false
       - key: WEB_ORIGIN
         sync: false

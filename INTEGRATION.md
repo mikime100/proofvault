@@ -115,12 +115,12 @@ Never in git. Each app has a `.env.example` listing every variable with a fake v
 | Unit | Pure logic: timeline, claim check, score, rules engine, SDK payload | Fitsum, Moges (SDK) | Vitest |
 | Contract | API responses and pipeline outputs pass the shared Zod schemas | Mike (API side), Fitsum (pipeline side), Moges (client side, at runtime) | Vitest + Zod |
 | Integration | API against real local Postgres: webhook duplicates, `/track`, disputes endpoints | Mike | Vitest + supertest |
-| AI eval | Real Claude call on the 5 scenarios, checks the rules in section 5 | Fitsum | `pnpm eval:draft` script |
+| AI eval | Real LLM (DeepSeek) call on the 5 scenarios, checks the rules in section 5 | Fitsum | `pnpm eval:draft` script |
 | Click path | Manual run of the demo flow on staging | Moges writes it, Mike runs it at each checkpoint | Checklist in `docs/click-path.md` |
 
 What we do **not** test: UI components, CSS, PayPal itself. The click path covers the UI.
 
-**No network in unit or contract tests.** Claude and PayPal are passed in as interfaces so tests use fakes. Only `pnpm eval:draft` and the smoke test hit real services.
+**No network in unit or contract tests.** The LLM and PayPal are passed in as interfaces so tests use fakes. Only `pnpm eval:draft` and the smoke test hit real services.
 
 ---
 
@@ -165,9 +165,9 @@ runPipeline(input: DisputeContext, rules: SellerRules, deps: { llm: LlmClient })
 
 **Acceptance (Mike checks all of these before closing the tickets):**
 - [ ] All five scenarios pass as unit tests with a fake LLM
-- [ ] `pnpm eval:draft` with real Claude: S1 to S4 give the expected decision, zero invented claims get through, output printed as a pass/fail table
+- [ ] `pnpm eval:draft` with the real LLM (DeepSeek): S1 to S4 give the expected decision, zero invented claims get through, output printed as a pass/fail table
 - [ ] Same input twice gives the same score (score is code, not the LLM)
-- [ ] Claude returning broken JSON: one retry, then `Decision = await_approval` with reason "manual review", no crash
+- [ ] The LLM returning broken JSON: one retry, then `Decision = await_approval` with reason "manual review", no crash
 - [ ] Evidence PDF opens, shows timeline with masked IPs, under 5 MB (PayPal upload limit, verify in docs)
 - [ ] No Prisma or PayPal imports inside `pipeline/`, `rules/`
 - [ ] Short `apps/api/src/pipeline/README.md`: what each function does, how to run the eval
