@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { ProofVault } from '@proofvault/sdk';
+import { CaptureOrderResponse } from '@proofvault/shared';
 import { DEMO_PRODUCT } from '@proofvault/shared/fixtures';
 import { ShieldCheck, Play, Download } from 'lucide-react';
 
@@ -129,9 +130,8 @@ export function App() {
             method: 'POST',
           });
           if (!res.ok) throw new Error('Failed to capture order');
-          const captureData = await res.json();
-          const token = typeof captureData.accessToken === 'string' ? captureData.accessToken : null;
-          if (!token) throw new Error('Capture response had no access token');
+          const captureData = CaptureOrderResponse.parse(await res.json());
+          const token = captureData.accessToken;
           localStorage.setItem(TOKEN_KEY, token);
           window.history.replaceState(null, '', `?t=${token}`);
           setAccessToken(token);
