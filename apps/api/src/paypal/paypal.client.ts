@@ -17,6 +17,18 @@ export interface CreatedOrder {
   id: string;
 }
 
+/** The parts of PayPal's dispute JSON we read. Field names are PayPal's own. */
+export interface PaypalDispute {
+  dispute_id: string;
+  create_time: string;
+  update_time?: string;
+  reason: string;
+  status: string;
+  dispute_amount: { currency_code: string; value: string };
+  seller_response_due_date?: string;
+  disputed_transactions?: { seller_transaction_id?: string; custom?: string; invoice_number?: string }[];
+}
+
 export interface CapturedOrder {
   status: string;
   captureId: string | null;
@@ -103,6 +115,34 @@ export class PaypalClient {
       },
     });
     return { id: json.id };
+  }
+
+  /** One dispute in full. Works straight away for a new case, unlike the list (sandbox notes). */
+  getDispute(disputeId: string): Promise<PaypalDispute> {
+    return this.call<PaypalDispute>('GET', `/v1/customer/disputes/${encodeURIComponent(disputeId)}`);
+  }
+
+  /** Recent disputes, newest first. Lags a new case by minutes, so it is only a backstop. */
+  async listDisputes(): Promise<{ dispute_id: string; update_time?: string }[]> {
+    const json = await this.call<{ items?: { dispute_id: string; update_time?: string }[] }>(
+      'GET',
+      '/v1/customer/disputes?page_size=50',
+    );
+    return json.items ?? [];
+  }
+
+  /** Asks PayPal whether a webhook really came from PayPal. */
+  async verifyWebhook(headers: Record<string, string | undefined>, event: unknown, webhookId: string): Promise<boolean> {
+    const json = await this.call<{ verification_status: string }>('POST', '/v1/notifications/verify-webhook-signature', {
+      auth_algo: headers['paypal-auth-algo'],
+      cert_url: headers['paypal-cert-url'],
+      transmission_id: headers['paypal-transmission-id'],
+      transmission_sig: headers['paypal-transmission-sig'],
+      transmission_time: headers['paypal-transmission-time'],
+      webhook_id: webhookId,
+      webhook_event: event,
+    });
+    return json.verification_status === 'SUCCESS';
   }
 
   /** Takes the money for an order the buyer approved. Approving alone moves nothing. */

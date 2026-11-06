@@ -277,6 +277,14 @@ export type DisputeListItem = z.infer<typeof DisputeListItem>;
 export const DisputeList = z.object({ items: z.array(DisputeListItem) });
 export type DisputeList = z.infer<typeof DisputeList>;
 
+/** POST /disputes/fetch: load one PayPal case by its id (the list lags new cases by minutes). */
+export const FetchDisputeRequest = z.object({ caseId: z.string().regex(/^PP-[A-Z0-9-]+$/) });
+export type FetchDisputeRequest = z.infer<typeof FetchDisputeRequest>;
+
+/** POST /disputes/sync: how many new or changed cases the manual poll brought in. */
+export const SyncResult = z.object({ synced: z.number().int().min(0) });
+export type SyncResult = z.infer<typeof SyncResult>;
+
 export const ActionLogEntry = z.object({
   id: z.string(),
   disputeId: z.string(),
