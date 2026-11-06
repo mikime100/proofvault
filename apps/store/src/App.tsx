@@ -171,10 +171,9 @@ export function App() {
           </p>
           <button
             onClick={createOrder}
-            disabled={error !== null}
-            className="w-full py-3 px-4 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 disabled:opacity-50"
+            className="w-full py-3 px-4 bg-blue-600 text-white rounded font-medium hover:bg-blue-700"
           >
-            {error ? 'Checkout failed - try again' : 'Pay with PayPal'}
+            Pay with PayPal
           </button>
           {error && (
             <p className="mt-3 text-sm text-red-600">{error}</p>
