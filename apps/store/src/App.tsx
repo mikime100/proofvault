@@ -6,7 +6,7 @@ import { ShieldCheck, Play, Download } from 'lucide-react';
 
 type View = 'course' | 'paying' | 'lessons';
 
-// Minimal types for the PayPal JS SDK v6 Buttons API we use. The SDK is loaded
+// Minimal types for the PayPal JS SDK (v5) Buttons API we use. The SDK is loaded
 // from the CDN and does not ship types with this setup.
 interface PayPalOrderActions {
   order: {
@@ -73,7 +73,7 @@ export function App() {
     [],
   );
 
-  // Load PayPal JS SDK v6 from CDN.
+  // Load PayPal JS SDK (v5) from CDN.
   useEffect(() => {
     const clientId = import.meta.env.VITE_PAYPAL_CLIENT_ID;
     if (!clientId || paypal()) {
