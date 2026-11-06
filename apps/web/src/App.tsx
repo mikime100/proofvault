@@ -3,6 +3,7 @@ import { ShieldCheck } from 'lucide-react';
 import { DisputesPage } from './pages/DisputesPage';
 import { DisputeDetailPage } from './pages/DisputeDetailPage';
 import { RulesPage } from './pages/RulesPage';
+import { TriagePage } from './pages/TriagePage';
 import { PasscodeProvider } from './lib/passcode';
 
 export function App() {
@@ -24,6 +25,9 @@ export function App() {
                 <Link to="/rules" className="text-neutral-600 hover:text-neutral-900">
                   Rules
                 </Link>
+                <Link to="/triage" className="text-neutral-600 hover:text-neutral-900">
+                  Triage
+                </Link>
               </nav>
             </div>
           </header>
@@ -32,6 +36,7 @@ export function App() {
               <Route path="/" element={<DisputesPage />} />
               <Route path="/disputes/:id" element={<DisputeDetailPage />} />
               <Route path="/rules" element={<RulesPage />} />
+              <Route path="/triage" element={<TriagePage />} />
             </Routes>
           </main>
         </div>
