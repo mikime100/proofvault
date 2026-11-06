@@ -133,7 +133,7 @@ export function App() {
           const captureData = CaptureOrderResponse.parse(await res.json());
           const token = captureData.accessToken;
           localStorage.setItem(TOKEN_KEY, token);
-          window.history.replaceState(null, '', `?t=${token}`);
+          window.history.replaceState(null, '', `/learn?t=${token}`);
           setAccessToken(token);
           setView('lessons');
         } catch (e) {
@@ -153,7 +153,8 @@ export function App() {
     buttonsRendered.current = true;
   }, [view, paypalSdkLoaded, paypalSdkFailed]);
 
-  if (view === 'course') {
+  // A saved access token always wins: an unlocked buyer never sees checkout again.
+  if (!accessToken && view === 'course') {
     return (
       <main className="mx-auto max-w-xl p-8 font-sans">
         <div className="mb-8">
@@ -184,7 +185,7 @@ export function App() {
     );
   }
 
-  if (view === 'paying') {
+  if (!accessToken && view === 'paying') {
     return (
       <main className="mx-auto max-w-xl p-8 font-sans">
         <h1 className="text-2xl font-semibold">Processing payment…</h1>
@@ -211,8 +212,7 @@ export function App() {
       <div className="mb-6 rounded border border-green-200 bg-green-50 p-4">
         <h2 className="text-sm font-semibold text-green-900">Your private course link</h2>
         <p className="mt-1 break-all font-mono text-xs text-green-800">
-          {window.location.origin}
-          {window.location.pathname}?t={accessToken}
+          {window.location.origin}/learn?t={accessToken}
         </p>
         <p className="mt-1 text-xs text-green-800">
           Bookmark it — anyone with this link can open your course.
