@@ -3,11 +3,15 @@
 // dispute list endpoint — there is no /triage endpoint.
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { BryntumScheduler } from '@bryntum/scheduler-react';
-import '@bryntum/scheduler/fontawesome/css/fontawesome.css';
-import '@bryntum/scheduler/fontawesome/css/solid.css';
-import '@bryntum/scheduler/scheduler.css';
-import '@bryntum/scheduler/stockholm-light.css';
+import '../lib/bryntum-license';
+import { BryntumScheduler } from '@bryntum/scheduler-react-enterprise';
+import { ProjectModel } from '@bryntum/scheduler-enterprise';
+import '@bryntum/core-enterprise/fontawesome/css/fontawesome.css';
+import '@bryntum/core-enterprise/fontawesome/css/solid.css';
+import '@bryntum/core-enterprise/core.thin.css';
+import '@bryntum/grid-enterprise/grid.thin.css';
+import '@bryntum/scheduler-enterprise/scheduler.thin.css';
+import '@bryntum/scheduler-enterprise/stockholm-light.css';
 import type { DisputeListItem } from '@proofvault/shared';
 import { api } from '../api';
 import { reasonLabel } from '../lib/format';
@@ -28,11 +32,12 @@ export function TriagePage() {
   const project = useMemo(() => {
     const items = disputes.data?.items;
     if (!items) return undefined;
-    return {
+    return new ProjectModel({
+      // Bryntum accepts plain data objects; v8 types only admit model instances.
       resourcesData: items.map((d) => ({
         id: d.id,
         name: `${d.paypalDisputeId} · ${reasonLabel(d.reason)}`,
-      })),
+      })) as never,
       eventsData: items
         .filter(
           (d): d is DisputeListItem & { createdAt: string; responseDueAt: string } =>
@@ -50,8 +55,8 @@ export function TriagePage() {
             d.decision === 'accept' && 'pv-event-accept',
             d.status === 'RESOLVED' && 'pv-event-done',
           ),
-        })),
-    };
+        })) as never,
+    });
   }, [disputes.data]);
 
   const urgentCount = disputes.data?.items.filter(isUrgent).length ?? 0;
