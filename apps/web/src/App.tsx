@@ -1,33 +1,41 @@
-// Placeholder screen. Moges replaces this with the real dashboard.
-import { useQuery } from '@tanstack/react-query';
+import { BrowserRouter, Link, Route, Routes } from 'react-router-dom';
 import { ShieldCheck } from 'lucide-react';
-import { api } from './api';
+import { DisputesPage } from './pages/DisputesPage';
+import { DisputeDetailPage } from './pages/DisputeDetailPage';
+import { RulesPage } from './pages/RulesPage';
+import { PasscodeProvider } from './lib/passcode';
 
 export function App() {
-  const health = useQuery({ queryKey: ['health'], queryFn: api.health });
-  const disputes = useQuery({ queryKey: ['disputes'], queryFn: api.disputes });
-
   return (
-    <main className="mx-auto max-w-3xl p-8 font-sans">
-      <h1 className="flex items-center gap-2 text-2xl font-semibold">
-        <ShieldCheck className="size-6" /> ProofVault
-      </h1>
-      <p className="mt-1 text-sm text-neutral-500">
-        API: {health.data ? `ok (${health.data.version})` : health.isError ? 'unreachable' : '...'}
-      </p>
-      <ul className="mt-6 divide-y rounded border">
-        {disputes.data?.items.map((d) => (
-          <li key={d.id} className="flex justify-between p-3 text-sm">
-            <span>{d.paypalDisputeId}</span>
-            <span>{d.reason}</span>
-            <span>
-              {d.amount.value} {d.amount.currency}
-            </span>
-            <span>{d.winScore ?? '-'}</span>
-            <span>{d.decision ?? 'not analyzed'}</span>
-          </li>
-        ))}
-      </ul>
-    </main>
+    <BrowserRouter>
+      <PasscodeProvider>
+        <div className="min-h-screen bg-neutral-50 font-sans text-neutral-900">
+          <header className="border-b bg-white">
+            <div className="mx-auto flex max-w-5xl items-center gap-4 px-6 py-4">
+              <ShieldCheck className="size-5 text-blue-600" />
+              <Link to="/" className="text-lg font-semibold">
+                ProofVault
+              </Link>
+              <span className="text-sm text-neutral-500">Seller dashboard</span>
+              <nav className="ml-auto flex gap-4 text-sm">
+                <Link to="/" className="text-neutral-600 hover:text-neutral-900">
+                  Disputes
+                </Link>
+                <Link to="/rules" className="text-neutral-600 hover:text-neutral-900">
+                  Rules
+                </Link>
+              </nav>
+            </div>
+          </header>
+          <main className="mx-auto max-w-5xl px-6 py-6">
+            <Routes>
+              <Route path="/" element={<DisputesPage />} />
+              <Route path="/disputes/:id" element={<DisputeDetailPage />} />
+              <Route path="/rules" element={<RulesPage />} />
+            </Routes>
+          </main>
+        </div>
+      </PasscodeProvider>
+    </BrowserRouter>
   );
 }

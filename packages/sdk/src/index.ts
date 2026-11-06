@@ -24,3 +24,5 @@ export async function track(type: AccessEventType, meta?: Record<string, string>
     // A tracking failure must never break the buyer's page.
   }
 }
+
+export const ProofVault = { init, track };

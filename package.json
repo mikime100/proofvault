@@ -6,13 +6,13 @@
   "engines": { "node": ">=22" },
   "scripts": {
     "build:shared": "pnpm --filter @proofvault/shared build",
-    "dev": "pnpm build:shared && pnpm -r --parallel --filter !@proofvault/shared dev",
+    "dev": "pnpm build:shared && pnpm --filter @proofvault/sdk build && pnpm -r --parallel --filter !@proofvault/shared dev",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "pnpm -r test",
     "build": "pnpm -r build",
-    "check": "pnpm build:shared && pnpm typecheck && pnpm lint && pnpm test && pnpm build",
+    "check": "pnpm build && pnpm typecheck && pnpm lint && pnpm test",
     "test:int": "pnpm --filter @proofvault/api test:int",
     "db:reset": "pnpm build:shared && pnpm --filter @proofvault/api db:reset",
     "smoke": "tsx --env-file=apps/api/.env scripts/smoke.ts"
