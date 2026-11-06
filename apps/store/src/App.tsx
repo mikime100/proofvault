@@ -114,17 +114,14 @@ export function App() {
     if (buttonsRendered.current || !paypalContainer.current) return;
 
     paypal()!.Buttons({
-      createOrder: (_data, actions) => {
-        return actions.order.create({
-          purchase_units: [
-            {
-              amount: {
-                value: DEMO_PRODUCT.price.value,
-                currency_code: DEMO_PRODUCT.price.currency,
-              },
-            },
-          ],
-        });
+      // Our api creates the order row AND the PayPal order server-side and
+      // returns the PayPal order id; the SDK just needs that id to render checkout.
+      createOrder: async () => {
+        const res = await fetch(`${API_URL}/store/orders`, { method: 'POST' });
+        if (!res.ok) throw new Error('Could not create order');
+        const { paypalOrderId } = (await res.json()) as { paypalOrderId?: string };
+        if (!paypalOrderId) throw new Error('Order creation returned no id');
+        return paypalOrderId;
       },
       onApprove: async (data) => {
         try {
