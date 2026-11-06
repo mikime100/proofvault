@@ -1,0 +1,121 @@
+import { Injectable } from '@nestjs/common';
+
+// Thin PayPal REST client. Behaviour we rely on is written up in docs/paypal-sandbox-notes.md.
+
+export class PaypalError extends Error {
+  constructor(
+    readonly status: number,
+    /** PayPal's own issue code, e.g. ORDER_NOT_APPROVED. */
+    readonly issue: string,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+export interface CreatedOrder {
+  id: string;
+}
+
+export interface CapturedOrder {
+  status: string;
+  captureId: string | null;
+  payerEmail: string | null;
+}
+
+@Injectable()
+export class PaypalClient {
+  private token: { value: string; expiresAt: number } | null = null;
+
+  private get base() {
+    return process.env.PAYPAL_ENV === 'live'
+      ? 'https://api-m.paypal.com'
+      : 'https://api-m.sandbox.paypal.com';
+  }
+
+  /** OAuth token, cached until a minute before it expires. */
+  private async accessToken(): Promise<string> {
+    if (this.token && Date.now() < this.token.expiresAt) return this.token.value;
+    const { PAYPAL_CLIENT_ID: id, PAYPAL_CLIENT_SECRET: secret } = process.env;
+    if (!id || !secret) throw new PaypalError(500, 'NOT_CONFIGURED', 'PayPal keys are not set');
+    const res = await fetch(`${this.base}/v1/oauth2/token`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${id}:${secret}`).toString('base64')}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: 'grant_type=client_credentials',
+    });
+    if (!res.ok) throw new PaypalError(res.status, 'AUTH_FAILED', `PayPal token: HTTP ${res.status}`);
+    const json = (await res.json()) as { access_token: string; expires_in: number };
+    this.token = { value: json.access_token, expiresAt: Date.now() + (json.expires_in - 60) * 1000 };
+    return json.access_token;
+  }
+
+  private async call<T>(method: string, path: string, body?: unknown): Promise<T> {
+    const res = await fetch(`${this.base}${path}`, {
+      method,
+      headers: {
+        Authorization: `Bearer ${await this.accessToken()}`,
+        'Content-Type': 'application/json',
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!res.ok) {
+      const details = json.details as { issue?: string; description?: string }[] | undefined;
+      const issue = details?.[0]?.issue ?? String(json.name ?? 'PAYPAL_ERROR');
+      throw new PaypalError(res.status, issue, details?.[0]?.description ?? String(json.message ?? ''));
+    }
+    return json as T;
+  }
+
+  /**
+   * Creates a CAPTURE order. Our order id goes in custom_id, the second way to match a dispute
+   * to an order (decision 1). Pay Now + return URLs stop the buyer page looping on "Continue to Review Order".
+   */
+  async createOrder(args: {
+    amount: string;
+    customId: string;
+    description: string;
+    returnUrl: string;
+    cancelUrl: string;
+  }): Promise<CreatedOrder> {
+    // PayPal answers 201, or 200 + PAYER_ACTION_REQUIRED when payment_source is set; both are fine.
+    const json = await this.call<{ id: string }>('POST', '/v2/checkout/orders', {
+      intent: 'CAPTURE',
+      purchase_units: [
+        {
+          amount: { currency_code: 'USD', value: args.amount },
+          custom_id: args.customId,
+          description: args.description,
+        },
+      ],
+      payment_source: {
+        paypal: {
+          experience_context: {
+            user_action: 'PAY_NOW',
+            shipping_preference: 'NO_SHIPPING',
+            return_url: args.returnUrl,
+            cancel_url: args.cancelUrl,
+          },
+        },
+      },
+    });
+    return { id: json.id };
+  }
+
+  /** Takes the money for an order the buyer approved. Approving alone moves nothing. */
+  async captureOrder(paypalOrderId: string): Promise<CapturedOrder> {
+    const json = await this.call<{
+      status: string;
+      payer?: { email_address?: string };
+      purchase_units?: { payments?: { captures?: { id: string }[] } }[];
+    }>('POST', `/v2/checkout/orders/${encodeURIComponent(paypalOrderId)}/capture`);
+    return {
+      status: json.status,
+      captureId: json.purchase_units?.[0]?.payments?.captures?.[0]?.id ?? null,
+      payerEmail: json.payer?.email_address ?? null,
+    };
+  }
+}
