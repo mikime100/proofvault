@@ -1,10 +1,13 @@
-import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link, useNavigate } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
+import { toast } from 'sonner';
 import type { DisputeListItem } from '@proofvault/shared';
 import { api } from '../api';
 import { DecisionBadge } from '../components/DecisionBadge';
 import { fmtDate, hoursUntil, reasonLabel, statusLabel } from '../lib/format';
+import { usePasscode } from '../lib/passcode';
 import { cn } from '../lib/utils';
 
 function dueBadge(d: DisputeListItem) {
@@ -24,7 +27,42 @@ function dueBadge(d: DisputeListItem) {
 }
 
 export function DisputesPage() {
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+  const passcode = usePasscode();
   const disputes = useQuery({ queryKey: ['disputes'], queryFn: api.disputes });
+  const [caseId, setCaseId] = useState('');
+
+  const sync = useMutation({
+    mutationFn: async () => {
+      const pc = await passcode.require();
+      if (!pc) throw new Error('cancelled');
+      return api.syncDisputes(pc);
+    },
+    onSuccess: () => {
+      toast.success('Sync finished');
+      qc.invalidateQueries({ queryKey: ['disputes'] });
+    },
+    onError: (e) => {
+      if (!(e instanceof Error && e.message === 'cancelled')) toast.error('Sync failed');
+    },
+  });
+
+  const fetchCase = useMutation({
+    mutationFn: async (id: string) => {
+      const pc = await passcode.require();
+      if (!pc) throw new Error('cancelled');
+      return api.fetchDispute(id.trim(), pc);
+    },
+    onSuccess: (detail) => {
+      toast.success(`Loaded ${detail.dispute.paypalDisputeId}`);
+      qc.invalidateQueries({ queryKey: ['disputes'] });
+      navigate(`/disputes/${detail.dispute.id}`);
+    },
+    onError: (e) => {
+      if (!(e instanceof Error && e.message === 'cancelled')) toast.error('Fetch failed');
+    },
+  });
 
   if (disputes.isPending) return <p className="text-sm text-neutral-500">Loading disputes…</p>;
   if (disputes.isError) return <p className="text-sm text-red-600">Could not load disputes.</p>;
@@ -34,6 +72,37 @@ export function DisputesPage() {
     <section>
       <h1 className="text-xl font-semibold">Disputes</h1>
       <p className="mt-1 text-sm text-neutral-500">{items.length} dispute{items.length === 1 ? '' : 's'}</p>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <button
+          onClick={() => sync.mutate()}
+          disabled={sync.isPending}
+          className="rounded-md border bg-white px-3 py-1.5 text-sm hover:bg-neutral-50 disabled:opacity-50"
+        >
+          {sync.isPending ? 'Syncing…' : 'Sync now'}
+        </button>
+        <form
+          className="flex items-center gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (caseId.trim()) fetchCase.mutate(caseId);
+          }}
+        >
+          <input
+            value={caseId}
+            onChange={(e) => setCaseId(e.target.value)}
+            placeholder="PP-… case ID"
+            className="w-40 rounded-md border bg-white px-3 py-1.5 text-sm"
+          />
+          <button
+            type="submit"
+            disabled={fetchCase.isPending || !caseId.trim()}
+            className="rounded-md border bg-white px-3 py-1.5 text-sm hover:bg-neutral-50 disabled:opacity-50"
+          >
+            {fetchCase.isPending ? 'Fetching…' : 'Fetch case'}
+          </button>
+        </form>
+      </div>
 
       <div className="mt-4 overflow-hidden rounded-lg border bg-white">
         <table className="w-full text-sm">

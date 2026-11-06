@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 import {
   ArrowLeft,
   CreditCard,
@@ -15,6 +16,7 @@ import type { PipelineFlag, TimelineEntry } from '@proofvault/shared';
 import { api } from '../api';
 import { DecisionBadge } from '../components/DecisionBadge';
 import { fmtDateTime, reasonLabel, statusLabel } from '../lib/format';
+import { usePasscode } from '../lib/passcode';
 import { cn } from '../lib/utils';
 
 const ENTRY_ICONS: Record<string, typeof CreditCard> = {
@@ -77,9 +79,51 @@ function Timeline({ entries, highlightIds }: { entries: TimelineEntry[]; highlig
   );
 }
 
+const ACTION_BUTTONS = [
+  { type: 'submit' as const, label: 'Submit evidence', className: 'bg-emerald-600 hover:bg-emerald-700' },
+  { type: 'offer' as const, label: 'Make offer', className: 'bg-sky-600 hover:bg-sky-700' },
+  { type: 'accept' as const, label: 'Accept claim', className: 'bg-amber-600 hover:bg-amber-700' },
+];
+
 export function DisputeDetailPage() {
   const { id = '' } = useParams();
+  const qc = useQueryClient();
+  const passcode = usePasscode();
   const detail = useQuery({ queryKey: ['dispute', id], queryFn: () => api.dispute(id) });
+  const [sandboxBusy, setSandboxBusy] = useState<string | null>(null);
+
+  const refresh = () => qc.invalidateQueries({ queryKey: ['dispute', id] });
+
+  const act = useMutation({
+    mutationFn: async (type: 'submit' | 'offer' | 'accept') => {
+      const pc = await passcode.require();
+      if (!pc) throw new Error('cancelled');
+      return api.disputeAction(id, type, pc);
+    },
+    onSuccess: (entry) => {
+      toast.success(`${entry.action} sent to PayPal`);
+      refresh();
+      qc.invalidateQueries({ queryKey: ['disputes'] });
+    },
+    onError: (e) => {
+      if (!(e instanceof Error && e.message === 'cancelled')) toast.error('Action failed');
+    },
+  });
+
+  const sandbox = async (step: 'require-evidence' | 'adjudicate') => {
+    const pc = await passcode.require();
+    if (!pc) return;
+    setSandboxBusy(step);
+    try {
+      const entry = await api.sandboxStep(id, step, pc);
+      toast.success(entry.ok ? `Sandbox ${step} done` : `Sandbox ${step} failed`);
+      refresh();
+    } catch {
+      toast.error(`Sandbox ${step} failed`);
+    } finally {
+      setSandboxBusy(null);
+    }
+  };
 
   if (detail.isPending) return <p className="text-sm text-neutral-500">Loading dispute…</p>;
   if (detail.isError || !detail.data)
@@ -112,6 +156,28 @@ export function DisputeDetailPage() {
         </span>
         <span>Status: {statusLabel(dispute.status)}</span>
         <span>Score: {dispute.winScore ?? analysis?.score.value ?? '—'}</span>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        {dispute.status === 'WAITING_FOR_SELLER_RESPONSE' &&
+          ACTION_BUTTONS.map((b) => (
+            <button
+              key={b.type}
+              onClick={() => act.mutate(b.type)}
+              disabled={act.isPending}
+              className={cn(
+                'rounded-md px-4 py-2 text-sm font-medium text-white disabled:opacity-50',
+                b.className,
+              )}
+            >
+              {b.label}
+            </button>
+          ))}
+        {dispute.status !== 'WAITING_FOR_SELLER_RESPONSE' && (
+          <span className="text-sm text-neutral-500">
+            Actions are only available while the dispute waits for the seller.
+          </span>
+        )}
       </div>
 
       {analysis && analysis.flags.length > 0 && (
@@ -252,6 +318,28 @@ export function DisputeDetailPage() {
           <p className="text-sm text-neutral-500">Not analyzed yet.</p>
         </Section>
       )}
+
+      <Section title="Sandbox controls">
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => void sandbox('require-evidence')}
+            disabled={sandboxBusy !== null}
+            className="rounded-md border px-3 py-1.5 text-sm hover:bg-neutral-50 disabled:opacity-50"
+          >
+            {sandboxBusy === 'require-evidence' ? 'Running…' : 'Require evidence'}
+          </button>
+          <button
+            onClick={() => void sandbox('adjudicate')}
+            disabled={sandboxBusy !== null}
+            className="rounded-md border px-3 py-1.5 text-sm hover:bg-neutral-50 disabled:opacity-50"
+          >
+            {sandboxBusy === 'adjudicate' ? 'Running…' : 'Adjudicate'}
+          </button>
+        </div>
+        <p className="mt-2 text-xs text-neutral-500">
+          Sandbox-only PayPal calls that move the dispute to the next stage for the demo.
+        </p>
+      </Section>
 
       <Section title="Activity">
         {actions.length === 0 ? (
