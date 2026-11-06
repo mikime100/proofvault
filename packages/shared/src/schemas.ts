@@ -285,6 +285,34 @@ export type FetchDisputeRequest = z.infer<typeof FetchDisputeRequest>;
 export const SyncResult = z.object({ synced: z.number().int().min(0) });
 export type SyncResult = z.infer<typeof SyncResult>;
 
+/**
+ * POST /disputes/:id/actions: what the seller (or the executor, for auto-actions) does on PayPal.
+ * Answers with the ActionLogEntry it wrote. submit uses the saved evidence package; offer without
+ * an amount uses the seller's offerPercent of the disputed amount; accept refunds in full.
+ */
+export const DisputeActionRequest = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('submit') }),
+  z.object({ type: z.literal('offer'), amount: Money.optional(), note: z.string().max(2000).optional() }),
+  z.object({ type: z.literal('accept'), note: z.string().max(2000).optional() }),
+  z.object({ type: z.literal('message'), text: z.string().min(1).max(2000) }),
+]);
+export type DisputeActionRequest = z.infer<typeof DisputeActionRequest>;
+
+export const SandboxStep = z.enum(['require-evidence', 'adjudicate']);
+export type SandboxStep = z.infer<typeof SandboxStep>;
+
+/**
+ * POST /disputes/:id/sandbox/:step, sandbox only: push a case along for the demo. Body optional.
+ * Defaults: require-evidence asks the seller; adjudicate decides in the seller's favour.
+ */
+export const SandboxStepBody = z
+  .object({
+    party: z.enum(['SELLER_EVIDENCE', 'BUYER_EVIDENCE']).optional(),
+    outcome: z.enum(['SELLER_FAVOR', 'BUYER_FAVOR']).optional(),
+  })
+  .default({});
+export type SandboxStepBody = z.infer<typeof SandboxStepBody>;
+
 export const ActionLogEntry = z.object({
   id: z.string(),
   disputeId: z.string(),

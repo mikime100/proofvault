@@ -1,4 +1,5 @@
 # Render blueprint: creates every service from this one file (Render > Blueprints > New).
+# Builds use `--filter "app..."`: the app plus everything it depends on, in order (shared, sdk).
 # Secrets marked sync: false are typed into the Render dashboard, never committed.
 services:
   - type: web
@@ -6,7 +7,7 @@ services:
     runtime: node
     plan: starter # not free: free plan sleeps, and a sleeping api misses webhooks
     region: frankfurt
-    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build:shared && pnpm --filter @proofvault/api build
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter "@proofvault/api..." build
     # Runs migrations, then seeds only the demo seller and product (never the fake scenarios).
     # Uses the project's own prisma and tsx, because pnpm from the build step may not exist here.
     preDeployCommand: cd apps/api && npx prisma migrate deploy && SEED_SCENARIOS=false npx prisma db seed
@@ -44,7 +45,7 @@ services:
   - type: web
     name: proofvault-web
     runtime: static
-    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build:shared && pnpm --filter @proofvault/web build
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter "@proofvault/web..." build
     staticPublishPath: apps/web/dist
     routes:
       - type: rewrite
@@ -61,7 +62,7 @@ services:
   - type: web
     name: proofvault-store
     runtime: static
-    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build:shared && pnpm --filter @proofvault/store build
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter "@proofvault/store..." build
     staticPublishPath: apps/store/dist
     routes:
       - type: rewrite

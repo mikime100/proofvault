@@ -26,6 +26,22 @@ Facts from real sandbox calls, not from docs. Add to this whenever PayPal surpri
 - A list item does not carry `seller_transaction_id`, only `buyer_transaction_id`. Always fetch the
   full case before matching it to an order.
 
+## Nov 6 to 7: actions on a dispute (live tests on the throwaway case PP-R-WQU-10196685)
+- **The case's `links` list is PayPal's own list of what you may do right now** (`accept_claim`,
+  `provide_evidence`, `send_message`, `escalate`, ...). Anything not listed is refused with
+  `ACTION_NOT_ALLOWED_IN_CURRENT_DISPUTE_STATE`. Check the links before acting.
+- `send-message` works in the inquiry stage. After it, the case waits on the buyer (`WAITING_FOR_BUYER_RESPONSE`).
+- `provide-evidence` was **refused** while the case was `WAITING_FOR_SELLER_RESPONSE` in the INQUIRY stage.
+- `POST .../escalate` with a `note` works (seller side). The case goes to `UNDER_REVIEW` with no actions
+  allowed; **a minute or two later** `provide_evidence` appears in its links.
+- `provide-evidence` then **works**: multipart with a JSON part `input` and the file part. The case shows
+  `PROOF_OF_FULFILLMENT / SUBMITTED_BY_SELLER` with our PDF attached.
+- Sandbox `require-evidence` and `adjudicate` were **refused** (`ACTION_NOT_ALLOWED_IN_CURRENT_DISPUTE_STATE`)
+  both before and right after escalating, while the stage was still INQUIRY. Still to find out: which
+  stage (CLAIM?) and how long after escalating they become allowed.
+- **For the demo:** open dispute, wait for WAITING_FOR_SELLER_RESPONSE, escalate, wait for
+  `provide_evidence` in the links, submit evidence, then adjudicate once PayPal allows it.
+
 ## Checkout quirks
 - Creating an order without `payment_source.paypal.experience_context.return_url` makes the
   buyer page loop on "Continue to Review Order". Always set `user_action: PAY_NOW` and a `return_url`.

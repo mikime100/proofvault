@@ -73,6 +73,11 @@ export class PaypalClient {
       },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
+    return this.readJson<T>(res);
+  }
+
+  /** PayPal's answer as JSON, or a PaypalError carrying PayPal's own issue code. */
+  private async readJson<T>(res: Response): Promise<T> {
     const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
     if (!res.ok) {
       const details = json.details as { issue?: string; description?: string }[] | undefined;
@@ -143,6 +148,61 @@ export class PaypalClient {
       webhook_event: event,
     });
     return json.verification_status === 'SUCCESS';
+  }
+
+  /**
+   * Sends the evidence package (decision 12): one evidence item, the response text as notes,
+   * the PDF as its document. PayPal wants multipart: a JSON part named `input` plus the file.
+   */
+  async provideEvidence(
+    disputeId: string,
+    args: { evidenceType: string; notes: string; pdf: Buffer; filename: string },
+  ): Promise<unknown> {
+    const form = new FormData();
+    const input = {
+      evidences: [{ evidence_type: args.evidenceType, notes: args.notes, documents: [{ name: args.filename }] }],
+    };
+    form.append('input', new Blob([JSON.stringify(input)], { type: 'application/json' }));
+    form.append('file1', new Blob([new Uint8Array(args.pdf)], { type: 'application/pdf' }), args.filename);
+    const res = await fetch(`${this.base}/v1/customer/disputes/${encodeURIComponent(disputeId)}/provide-evidence`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${await this.accessToken()}` },
+      body: form,
+    });
+    return this.readJson(res);
+  }
+
+  /** Offers the buyer a partial refund to settle (rule 4 of decide). */
+  makeOffer(disputeId: string, args: { amount: string; note: string }): Promise<unknown> {
+    return this.call('POST', `/v1/customer/disputes/${encodeURIComponent(disputeId)}/make-offer`, {
+      note: args.note,
+      offer_type: 'REFUND',
+      offer_amount: { currency_code: 'USD', value: args.amount },
+    });
+  }
+
+  /** Gives the buyer the refund and closes the case (rule 3 of decide). Cannot be undone. */
+  acceptClaim(disputeId: string, args: { note: string }): Promise<unknown> {
+    return this.call('POST', `/v1/customer/disputes/${encodeURIComponent(disputeId)}/accept-claim`, { note: args.note });
+  }
+
+  /** A message to the buyer, shown in the case. */
+  sendMessage(disputeId: string, args: { message: string }): Promise<unknown> {
+    return this.call('POST', `/v1/customer/disputes/${encodeURIComponent(disputeId)}/send-message`, {
+      message: args.message,
+    });
+  }
+
+  /** Sandbox only: moves a case to the stage that waits for evidence. */
+  requireEvidence(disputeId: string, action: 'SELLER_EVIDENCE' | 'BUYER_EVIDENCE'): Promise<unknown> {
+    return this.call('POST', `/v1/customer/disputes/${encodeURIComponent(disputeId)}/require-evidence`, { action });
+  }
+
+  /** Sandbox only: decides a case, so the demo can show it resolved. */
+  adjudicate(disputeId: string, outcome: 'BUYER_FAVOR' | 'SELLER_FAVOR'): Promise<unknown> {
+    return this.call('POST', `/v1/customer/disputes/${encodeURIComponent(disputeId)}/adjudicate`, {
+      adjudication_outcome: outcome,
+    });
   }
 
   /** Takes the money for an order the buyer approved. Approving alone moves nothing. */
