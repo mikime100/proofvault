@@ -45,7 +45,7 @@ The MVP is doable for 3 people in 8 days **if** we drop every stretch item until
 ## 2. Open decisions (my picks, change them if you disagree)
 | Decision | Pick | Why |
 |---|---|---|
-| LLM | **Claude Sonnet 5.5** (`claude-sonnet-5-5`) via the Vercel AI SDK (a library that gives one tool-calling API across LLM providers) | PayPal Agent Toolkit ships an AI SDK adapter, and Claude is strong at strict JSON output, which the guardrail needs. |
+| LLM | **DeepSeek** (`deepseek-chat`, decided Nov 6: a key we can pay for today; cost was not the reason, both cost a few dollars here). Reached through the `LlmClient` interface, so the provider lives in one file. Was: Claude Sonnet 5.5 via the Vercel AI SDK (a library that gives one tool-calling API across LLM providers) | PayPal Agent Toolkit ships an AI SDK adapter, and Claude is strong at strict JSON output, which the guardrail needs. |
 | Product | **Mini course** (4 short lessons + 1 bonus PDF) | Gives several event types over several days (login, lesson views, download). A template pack only gives one download, which makes a weak timeline. |
 | ORM | **Prisma** | Fastest schema-to-types loop, simple migrations, works fine in NestJS. |
 | Package manager | **pnpm workspaces** | One repo, shared types package, one install. |
@@ -73,7 +73,7 @@ The MVP is doable for 3 people in 8 days **if** we drop every stretch item until
  │  tracking/  access events                                        │
  │  disputes/  sync (webhook + poll), actions                       │
  │  pipeline/  timeline -> draft -> check -> score -> decide -> act │
- │  agent/     Claude + PayPal Agent Toolkit tools                  │
+ │  agent/     LLM (DeepSeek) + PayPal Agent Toolkit tools          │
  └───────┬────────────────────────────┬────────────────────────────┘
          │                            │
          ▼                            ▼
@@ -103,9 +103,9 @@ proofvault/
 1. **Intake**: webhook or poll sees a new or changed dispute, saves it (upsert by `paypal_dispute_id`, so duplicates do nothing).
 2. **Load**: `GET /v1/customer/disputes/{id}`, match to our order by capture ID first, then by `custom_id` (our order id, sent to PayPal at order creation).
 3. **Timeline**: collect order + access events, sort, save as JSON. Every timeline entry keeps its database record ID.
-4. **Draft**: Claude gets the timeline and the dispute reason, returns structured claims (see section 4).
+4. **Draft**: the LLM gets the timeline and the dispute reason, returns structured claims (see section 4).
 5. **Check**: code verifies every claim against the database. Failing claims are dropped and logged.
-6. **Score**: rules-based 0 to 100, Claude writes 2 to 4 plain reasons.
+6. **Score**: rules-based 0 to 100, the LLM writes 2 to 4 plain reasons.
 7. **Decide**: seller rules pick one of: auto-submit, auto-offer, auto-accept, or wait for approval.
 8. **Act**: call PayPal. Store the result in an action log.
 9. **Track**: on `RESOLVED` (webhook or poll), write an Outcome row.
@@ -115,7 +115,7 @@ proofvault/
 ## 4. AI design (the part judges will poke at)
 
 ### Guardrail: no invented evidence
-Claude never writes free text that goes straight to PayPal. It returns JSON like:
+The LLM never writes free text that goes straight to PayPal. It returns JSON like:
 ```json
 {
   "claims": [
@@ -162,7 +162,7 @@ Each person owns a vertical slice and its tests. Owners merge their own PRs afte
 
 ### Fitsum (B): AI agent + pipeline
 - Timeline builder, evidence PDF generator
-- Claude draft with structured output, claim checker, unit tests on seed data (this code must be tested, it is our main promise)
+- LLM draft with structured output, claim checker, unit tests on seed data (this code must be tested, it is our main promise)
 - Win score rules + reasons
 - Auto-action rules engine (reads seller rules JSON, returns a decision)
 - Agent Toolkit wiring
@@ -216,7 +216,7 @@ The GitHub Issues board holds the live owners and target dates; numbers below ar
 |---|---|---|---|
 | Nov 4 to 6 (done) | Scaffold, CI, contract, smoke test passed, board, #1, #5, #6 | Pipeline core on a branch (first version of #12, #16) | Store and dashboard in progress |
 | **Fri Nov 6** | Review Fitsum's branch, #2 Render deploy | Rebase and fixes from the #16 review, open PR | #7 store pages, #8 dashboard on sample data |
-| **Sat Nov 7** | #3 + #4 checkout and tracking, #10 intake | #11 real Claude client + `eval:draft`, #12 PDF masking | #14 dashboard on real API, #15 approval, rules, controls |
+| **Sat Nov 7** | #3 + #4 checkout and tracking, #10 intake | #11 real DeepSeek client + `eval:draft`, #12 PDF masking | #14 dashboard on real API, #15 approval, rules, controls |
 | **Sun Nov 8** | #17 pipeline on intake, #18 submit + stage calls | #20 Render Workflows (decide by noon) | #13 live checkout, #9 seller stat |
 | **Mon Nov 9** | **#19 walking skeleton**, #21 executor | #23 Agent Toolkit, edge cases | #25 Bryntum board |
 | **Tue Nov 10** | **#22 real sandbox end to end**, #27 demo disputes | #26 Studio agent with Moges | #26 AG Studio |
@@ -254,7 +254,7 @@ One `render.yaml` blueprint creates everything:
 
 All within the $50 Render credits. Do not use the free web service plan for the API: it sleeps when idle and the first request takes ~50 seconds, which kills webhooks and the live demo.
 
-**Env vars (API):** `DATABASE_URL`, `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_WEBHOOK_ID`, `PAYPAL_ENV=sandbox`, `ANTHROPIC_API_KEY`, `WEB_ORIGIN`, `STORE_ORIGIN`, `DEMO_PASSCODE`.
+**Env vars (API):** `DATABASE_URL`, `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_WEBHOOK_ID`, `PAYPAL_ENV=sandbox`, `LLM_PROVIDER`, `LLM_MODEL`, `LLM_API_KEY`, `WEB_ORIGIN`, `STORE_ORIGIN`, `DEMO_PASSCODE`.
 **Env vars (web/store, build time):** `VITE_API_URL`, `VITE_PAYPAL_CLIENT_ID`, `VITE_AG_LICENSE_KEY` (trial key, never committed).
 
 **Release checklist (Nov 11):** migrations and the seller-only seed run on deploy, `DEMO_PASSCODE` set, webhook URL in PayPal app points at the prod API, CORS allows web + store origins, health check route `/health` returns 200, no secrets in git history.
@@ -269,7 +269,7 @@ All within the $50 Render credits. Do not use the free web service plan for the 
 | GitHub private repo, all 3 as collaborators | C | Nov 4 |
 | PayPal Developer account, sandbox app with **Disputes** enabled, sandbox business (seller) + personal (buyer) accounts | A | Nov 4 |
 | Render account, team workspace, $50 credits claimed | A | Nov 4 |
-| Anthropic API key with a spend limit (~$30) | B | Nov 4 |
+| DeepSeek API key with a spend limit (~$10) | Mike | Nov 6 |
 | AG Grid / AG Studio trial (45 days) + their PayPal boilerplate | C | Nov 4 |
 | Bryntum Scheduler trial | C | Nov 5 |
 | Postman with the PayPal collection | A | Nov 4 |
@@ -281,7 +281,7 @@ All within the $50 Render credits. Do not use the free web service plan for the 
 Node 22 LTS, pnpm, Docker Desktop (local Postgres), Git, Claude Code with APIMatic plugin, a screen recorder (OBS) for C.
 
 ### Money
-About $40 to $60 total out of pocket: Anthropic usage (~$10 to $30), anything over Render credits (should be $0). Everything else is free or trial.
+About $40 to $60 total out of pocket: DeepSeek usage (a few dollars), anything over Render credits (should be $0). Everything else is free or trial.
 
 ### Licence checks (do on Nov 4, 10 minutes)
 - Can the Bryntum trial package be used in a **public** repo? If not, the repo installs it but the README says to install the trial yourself.
@@ -308,7 +308,7 @@ About $40 to $60 total out of pocket: Anthropic usage (~$10 to $30), anything ov
 - [ ] Public GitHub repo, README with setup and run steps, MIT LICENSE shown in About
 - [ ] Video under 3 minutes, public on YouTube, no copyrighted music, shows the real flow
 - [ ] Description of features
-- [ ] Tools used: Claude Sonnet 5.5, PayPal JS SDK v6, Orders v2, Disputes API (each endpoint), Webhooks, Agent Toolkit, AG Studio, Bryntum, Render (hosting + Workflows), APIMatic, Postman
+- [ ] Tools used: DeepSeek (`deepseek-chat`), PayPal JS SDK v6, Orders v2, Disputes API (each endpoint), Webhooks, Agent Toolkit, AG Studio, Bryntum, Render (hosting + Workflows), APIMatic, Postman
 - [ ] Submitted by Nov 12, 12:00 UTC
 
 ---

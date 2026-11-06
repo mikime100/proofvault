@@ -17,4 +17,4 @@ Functions (see `index.ts` for signatures):
   YYYY-MM-DD, names a date no cited record is from, or states a count ("4 lessons", "3 days")
   that the cited records do not show. Everything else in the text is accepted on its citations.
 - Not built yet: `draftResponse`, `scoreDispute`, `explainScore`, `decide`, `renderEvidencePdf`, `runPipeline`.
-How to run the real-Claude eval: (add `pnpm eval:draft` here once it exists)
+How to run the real-LLM eval: (add `pnpm eval:draft` here once it exists)
