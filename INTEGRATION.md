@@ -49,6 +49,7 @@ Settled by grilling the contract. Code already matches. Change only through a PR
 | 13 | **No automatic action at the deadline.** Only warnings: Bryntum row turns red, dashboard shows a "due in under 48h" badge. |
 | 14 | **Demo passcode on writes:** every route that changes something (approve, submit, offer, accept, sandbox steps, rules) needs header `x-demo-passcode` (`DEMO_PASSCODE_HEADER`) to match the server's `DEMO_PASSCODE`. Reads stay open. Mike puts `@UseGuards(PasscodeGuard)` on write routes; the dashboard asks for the passcode once and sends it on every write. |
 | 15 | **Production database:** only the demo seller and product (`SEED_SCENARIOS=false`, run on every deploy). Real sandbox disputes fill the rest. The five scenarios exist only in local dev and CI. |
+| 16 | **Act only on what PayPal allows right now** (added Nov 7, from live sandbox tests). Each case's PayPal `links` list the allowed actions; the API exposes them as `allowedActions` (`submit`, `offer`, `accept`, `message`, `escalate`) on the dispute list and detail. The dashboard enables only those buttons; the API reloads the case and refuses anything else with `409 ACTION_NOT_ALLOWED_NOW`; the auto-action executor (#21) checks the same list. New action `escalate` moves an inquiry to PayPal review, after which evidence can be submitted. |
 
 ---
 

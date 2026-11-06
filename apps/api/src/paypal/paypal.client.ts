@@ -181,6 +181,11 @@ export class PaypalClient {
     });
   }
 
+  /** Moves an inquiry to PayPal review. A minute or two later PayPal allows evidence (sandbox notes). */
+  escalate(disputeId: string, args: { note: string }): Promise<unknown> {
+    return this.call('POST', `/v1/customer/disputes/${encodeURIComponent(disputeId)}/escalate`, { note: args.note });
+  }
+
   /** Gives the buyer the refund and closes the case (rule 3 of decide). Cannot be undone. */
   acceptClaim(disputeId: string, args: { note: string }): Promise<unknown> {
     return this.call('POST', `/v1/customer/disputes/${encodeURIComponent(disputeId)}/accept-claim`, { note: args.note });

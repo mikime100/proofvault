@@ -4,7 +4,7 @@ Read by any AI coding tool (Claude Code reads it through `CLAUDE.md`). Humans: t
 
 ## Read first
 - `PLAN.md`: what we are building and the schedule.
-- `INTEGRATION.md`: the team standard. Section 2 holds the 15 agreed contract decisions; do not contradict them.
+- `INTEGRATION.md`: the team standard. Section 2 holds the 16 agreed contract decisions; do not contradict them.
 - `docs/paypal-sandbox-notes.md`: how the PayPal sandbox actually behaves.
 
 ## Rules

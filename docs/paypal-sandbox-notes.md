@@ -39,8 +39,13 @@ Facts from real sandbox calls, not from docs. Add to this whenever PayPal surpri
 - Sandbox `require-evidence` and `adjudicate` were **refused** (`ACTION_NOT_ALLOWED_IN_CURRENT_DISPUTE_STATE`)
   both before and right after escalating, while the stage was still INQUIRY. Still to find out: which
   stage (CLAIM?) and how long after escalating they become allowed.
-- **For the demo:** open dispute, wait for WAITING_FOR_SELLER_RESPONSE, escalate, wait for
-  `provide_evidence` in the links, submit evidence, then adjudicate once PayPal allows it.
+- About **30 minutes after escalating**, the case became a claim: `WAITING_FOR_SELLER_RESPONSE`, stage
+  `CHARGEBACK`, links `accept_claim, provide_evidence`. Evidence submitted then moves it to `UNDER_REVIEW`
+  (links `self, provide_supporting_info`; that is a different endpoint we do not use).
+- Sandbox `adjudicate` was still refused right after that. Retry later; every step so far needed PayPal to settle.
+- **For the demo (timings matter):** buyer opens dispute (a few minutes to WAITING_FOR_SELLER_RESPONSE),
+  seller escalates (about 30 minutes to the claim stage), submit evidence, adjudicate when PayPal allows it.
+  So **pre-create the demo disputes the day before** (#27) and record each step when it is ready.
 
 ## Checkout quirks
 - Creating an order without `payment_source.paypal.experience_context.return_url` makes the

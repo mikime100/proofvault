@@ -268,9 +268,18 @@ export const CaptureOrderResponse = z.object({
   accessToken: z.string(),
 });
 
+/**
+ * Decision 16: what PayPal allows on a case right now, read from the case's own `links`.
+ * Buttons and the auto-action executor act only on these; anything else PayPal would refuse.
+ * When the case has never been loaded from PayPal (seed data), every action is listed.
+ */
+export const AllowedAction = z.enum(['submit', 'offer', 'accept', 'message', 'escalate']);
+export type AllowedAction = z.infer<typeof AllowedAction>;
+
 export const DisputeListItem = Dispute.extend({
   decision: DecisionAction.nullable(),
   buyerEmail: z.string().nullable(),
+  allowedActions: z.array(AllowedAction),
 });
 export type DisputeListItem = z.infer<typeof DisputeListItem>;
 
@@ -288,13 +297,16 @@ export type SyncResult = z.infer<typeof SyncResult>;
 /**
  * POST /disputes/:id/actions: what the seller (or the executor, for auto-actions) does on PayPal.
  * Answers with the ActionLogEntry it wrote. submit uses the saved evidence package; offer without
- * an amount uses the seller's offerPercent of the disputed amount; accept refunds in full.
+ * an amount uses the seller's offerPercent of the disputed amount; accept refunds in full;
+ * escalate moves an inquiry to PayPal review, after which evidence can be submitted.
+ * Refused with 409 ACTION_NOT_ALLOWED_NOW when PayPal does not currently allow it (decision 16).
  */
 export const DisputeActionRequest = z.discriminatedUnion('type', [
   z.object({ type: z.literal('submit') }),
   z.object({ type: z.literal('offer'), amount: Money.optional(), note: z.string().max(2000).optional() }),
   z.object({ type: z.literal('accept'), note: z.string().max(2000).optional() }),
   z.object({ type: z.literal('message'), text: z.string().min(1).max(2000) }),
+  z.object({ type: z.literal('escalate'), note: z.string().max(2000).optional() }),
 ]);
 export type DisputeActionRequest = z.infer<typeof DisputeActionRequest>;
 
@@ -316,7 +328,7 @@ export type SandboxStepBody = z.infer<typeof SandboxStepBody>;
 export const ActionLogEntry = z.object({
   id: z.string(),
   disputeId: z.string(),
-  action: z.enum(['submit', 'offer', 'accept', 'message', 'require_evidence', 'adjudicate', 'analyze']),
+  action: z.enum(['submit', 'offer', 'accept', 'message', 'escalate', 'require_evidence', 'adjudicate', 'analyze']),
   actor: z.enum(['agent', 'seller']),
   ok: z.boolean(),
   detail: z.string(),
@@ -330,5 +342,6 @@ export const DisputeDetail = z.object({
   /** Null until the pipeline has run. */
   analysis: PipelineResult.nullable(),
   actions: z.array(ActionLogEntry),
+  allowedActions: z.array(AllowedAction),
 });
 export type DisputeDetail = z.infer<typeof DisputeDetail>;
