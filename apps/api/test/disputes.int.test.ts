@@ -31,7 +31,8 @@ describe('dispute read endpoints', () => {
   it('lists all five scenarios in the DisputeList shape', async () => {
     const res = await request(app.getHttpServer()).get('/disputes').expect(200);
     const list = DisputeList.parse(res.body);
-    expect(list.items.map((d) => d.id).sort()).toEqual(['dsp_s1', 'dsp_s2', 'dsp_s3', 'dsp_s4', 'dsp_s5']);
+    // arrayContaining: a developer's local database may also hold real sandbox cases.
+    expect(list.items.map((d) => d.id)).toEqual(expect.arrayContaining(['dsp_s1', 'dsp_s2', 'dsp_s3', 'dsp_s4', 'dsp_s5']));
     const s4 = list.items.find((d) => d.id === 'dsp_s4')!;
     expect(s4.orderId).toBeNull();
     expect(s4.buyerEmail).toBeNull();

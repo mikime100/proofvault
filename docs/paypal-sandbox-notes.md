@@ -19,6 +19,13 @@ Facts from real sandbox calls, not from docs. Add to this whenever PayPal surpri
 - The buyer's message and attachment come back in `messages[]` and in `evidences[]` with
   `source: SUBMITTED_BY_BUYER`.
 
+## Nov 6: intake
+- The **list** gives `update_time` rounded to whole seconds (`19:45:54.000Z`); the **full case** keeps
+  milliseconds (`19:45:54.083Z`). Compare them to the second, or every poll reloads every case.
+- The full case has `seller_response_due_date` (20 days after opening for this inquiry).
+- A list item does not carry `seller_transaction_id`, only `buyer_transaction_id`. Always fetch the
+  full case before matching it to an order.
+
 ## Checkout quirks
 - Creating an order without `payment_source.paypal.experience_context.return_url` makes the
   buyer page loop on "Continue to Review Order". Always set `user_action: PAY_NOW` and a `return_url`.
