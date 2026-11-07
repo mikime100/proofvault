@@ -30,6 +30,29 @@ describe('buildTimeline', () => {
     expect(t.orderId).toBeNull();
     expect(t.entries.map((e) => e.source)).toEqual(['dispute']);
   });
+
+  it("collapses repeated identical events within 5 seconds into one (double-click guard)", () => {
+    const s1 = ctx("S1");
+    const dupes = [
+      { id: "evt_dup1", orderId: s1.order!.id, type: "download" as const, ip: s1.order!.checkoutIp, device: s1.order!.checkoutDevice, userAgent: "UA", at: "2026-11-02T08:30:01Z", meta: { file: "bonus.pdf" } },
+      { id: "evt_dup2", orderId: s1.order!.id, type: "download" as const, ip: s1.order!.checkoutIp, device: s1.order!.checkoutDevice, userAgent: "UA", at: "2026-11-02T08:30:02Z", meta: { file: "bonus.pdf" } },
+      { id: "evt_dup3", orderId: s1.order!.id, type: "download" as const, ip: s1.order!.checkoutIp, device: s1.order!.checkoutDevice, userAgent: "UA", at: "2026-11-02T08:30:03Z", meta: { file: "bonus.pdf" } },
+    ];
+    const t = buildTimeline({ ...s1, events: [...s1.events, ...dupes] });
+    const downloads = t.entries.filter((e) => e.type === "download");
+    expect(downloads).toHaveLength(1);
+    expect(downloads[0]!.recordId).toBe("evt_s1_4");
+  });
+
+  it("keeps identical events that are more than 5 seconds apart", () => {
+    const s1 = ctx("S1");
+    const later = [
+      { id: "evt_later", orderId: s1.order!.id, type: "download" as const, ip: s1.order!.checkoutIp, device: s1.order!.checkoutDevice, userAgent: "UA", at: "2026-11-02T08:31:00Z", meta: { file: "bonus.pdf" } },
+    ];
+    const t = buildTimeline({ ...s1, events: [...s1.events, ...later] });
+    const downloads = t.entries.filter((e) => e.type === "download");
+    expect(downloads).toHaveLength(2);
+  });
 });
 
 describe('checkClaims', () => {

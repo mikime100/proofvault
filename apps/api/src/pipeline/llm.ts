@@ -26,6 +26,7 @@ export function createLlmClient(): LlmClient {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${apiKey}`,
         },
+        signal: AbortSignal.timeout(30_000),
         body: JSON.stringify({
           model,
           response_format: { type: 'json_object' },
