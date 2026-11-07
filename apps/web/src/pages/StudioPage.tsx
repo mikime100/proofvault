@@ -1,10 +1,16 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AgStudio } from 'ag-studio-react';
-import { AgStudioLicenseManager } from 'ag-studio';
+import {
+  AgStudioLicenseManager,
+  createAiHarness,
+  directLlmRunner,
+  type AgStudioApi,
+} from 'ag-studio';
 import { api } from '../api';
 import { summarize } from '../lib/analytics';
 import { reasonLabel } from '../lib/format';
+import { proofvaultLlm } from '../lib/studioLlm';
 
 // Licence key from VITE_AG_STUDIO_LICENSE_KEY (apps/web/.env), never committed.
 if (import.meta.env.VITE_AG_STUDIO_LICENSE_KEY) {
@@ -66,7 +72,16 @@ export function StudioPage() {
   return (
     <section className="-mx-6 -my-6">
       <div className="h-[calc(100vh-8rem)]">
-        <AgStudio data={data} mode="edit" />
+        <AgStudio
+          data={data}
+          mode="edit"
+          ai={({ api: coreApi }) =>
+            createAiHarness(coreApi as AgStudioApi, ({ builtIn }) => ({
+              agents: [directLlmRunner({ ...builtIn.lead, adapter: proofvaultLlm })],
+              primary: 'lead',
+            }))
+          }
+        />
       </div>
     </section>
   );
