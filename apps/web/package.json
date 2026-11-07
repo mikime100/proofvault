@@ -17,6 +17,8 @@
     "@bryntum/scheduler-react-enterprise": "^8.0.0",
     "@proofvault/shared": "workspace:*",
     "@tanstack/react-query": "^5.83.0",
+    "ag-studio": "3.1.0",
+    "ag-studio-react": "^3.1.0",
     "clsx": "^2.1.1",
     "lucide-react": "^0.530.0",
     "react": "^19.1.0",

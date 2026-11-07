@@ -42,6 +42,7 @@ export function App() {
   );
   const [error, setError] = useState<string | null>(null);
   const [paypalSdkLoaded, setPaypalSdkLoaded] = useState(false);
+  const [openLesson, setOpenLesson] = useState<number | null>(null);
   const [paypalSdkFailed, setPaypalSdkFailed] = useState(false);
   const buttonsRendered = useRef(false);
   const paypalContainer = useRef<HTMLDivElement>(null);
@@ -222,17 +223,38 @@ export function App() {
       <div className="space-y-4">
         <h2 className="text-lg font-semibold border-b pb-2">Lessons</h2>
         {[1, 2, 3, 4].map((lesson) => (
-          <div key={lesson} className="flex justify-between items-center p-4 rounded border bg-white">
-            <div>
-              <h3 className="font-medium">Lesson {lesson}</h3>
-              <p className="text-sm text-neutral-500">Video lesson {lesson} of 4</p>
+          <div key={lesson} className="rounded border bg-white">
+            <div className="flex justify-between items-center p-4">
+              <div>
+                <h3 className="font-medium">Lesson {lesson}</h3>
+                <p className="text-sm text-neutral-500">Video lesson {lesson} of 4</p>
+              </div>
+              <button
+                onClick={() => {
+                  const opening = openLesson !== lesson;
+                  setOpenLesson(opening ? lesson : null);
+                  if (opening) track('lesson_view', { lesson: String(lesson) });
+                }}
+                className="flex items-center gap-2 py-2 px-3 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+              >
+                <Play size={16} /> {openLesson === lesson ? 'Close' : `View lesson ${lesson}`}
+              </button>
             </div>
-            <button
-              onClick={() => track('lesson_view', { lesson: String(lesson) })}
-              className="flex items-center gap-2 py-2 px-3 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
-            >
-              <Play size={16} /> View lesson {lesson}
-            </button>
+            {openLesson === lesson && (
+              <div className="border-t bg-neutral-900">
+                <div className="flex aspect-video items-center justify-center">
+                  <div className="text-center">
+                    <Play size={48} className="mx-auto text-white/70" />
+                    <p className="mt-3 text-sm text-neutral-300">
+                      Lesson {lesson} — ProofVault course video
+                    </p>
+                    <p className="mt-1 text-xs text-neutral-500">
+                      Demo placeholder — the real course video streams here
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -242,12 +264,14 @@ export function App() {
           <Download size={20} className="text-amber-600" />
           <h3 className="font-medium">Bonus PDF</h3>
         </div>
-        <button
+        <a
+          href="/bonus.pdf"
+          download="bonus.pdf"
           onClick={() => track('download', { file: 'bonus.pdf' })}
-          className="w-full py-3 px-4 bg-amber-600 text-white rounded font-medium hover:bg-amber-700"
+          className="block w-full py-3 px-4 bg-amber-600 text-white rounded font-medium text-center hover:bg-amber-700"
         >
           Download bonus.pdf
-        </button>
+        </a>
       </div>
     </main>
   );

@@ -1,10 +1,15 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Link, NavLink, Route, Routes } from 'react-router-dom';
 import { ShieldCheck } from 'lucide-react';
 import { DisputesPage } from './pages/DisputesPage';
 import { DisputeDetailPage } from './pages/DisputeDetailPage';
 import { RulesPage } from './pages/RulesPage';
-import { TriagePage } from './pages/TriagePage';
+import { AnalyticsPage } from './pages/AnalyticsPage';
 import { PasscodeProvider } from './lib/passcode';
+
+// Bryntum + AG Studio are heavy — keep them out of the main bundle.
+const TriagePage = lazy(() => import('./pages/TriagePage').then((m) => ({ default: m.TriagePage })));
+const StudioPage = lazy(() => import('./pages/StudioPage').then((m) => ({ default: m.StudioPage })));
 
 export function App() {
   return (
@@ -22,6 +27,8 @@ export function App() {
                 {[
                   { to: '/', label: 'Disputes', end: true },
                   { to: '/rules', label: 'Rules', end: false },
+                  { to: '/analytics', label: 'Analytics', end: false },
+                  { to: '/studio', label: 'Studio', end: false },
                   { to: '/triage', label: 'Triage', end: false },
                 ].map((n) => (
                   <NavLink
@@ -47,7 +54,23 @@ export function App() {
               <Route path="/" element={<DisputesPage />} />
               <Route path="/disputes/:id" element={<DisputeDetailPage />} />
               <Route path="/rules" element={<RulesPage />} />
-              <Route path="/triage" element={<TriagePage />} />
+              <Route path="/analytics" element={<AnalyticsPage />} />
+              <Route
+                path="/studio"
+                element={
+                  <Suspense fallback={<p className="text-sm text-neutral-500">Loading Studio…</p>}>
+                    <StudioPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/triage"
+                element={
+                  <Suspense fallback={<p className="text-sm text-neutral-500">Loading triage board…</p>}>
+                    <TriagePage />
+                  </Suspense>
+                }
+              />
             </Routes>
           </main>
         </div>
