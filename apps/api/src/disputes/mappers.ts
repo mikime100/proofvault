@@ -28,7 +28,8 @@ export function toDispute(row: DisputeRow): Dispute {
   };
 }
 
-export function toOrder(row: OrderRow): Order {
+/** For API responses the checkout IP is masked; the pipeline gets it in full (it compares IPs). */
+export function toOrder(row: OrderRow, opts: { maskIps?: boolean } = { maskIps: true }): Order {
   return {
     id: row.id,
     paypalOrderId: row.paypalOrderId,
@@ -36,7 +37,7 @@ export function toOrder(row: OrderRow): Order {
     productId: row.productId,
     buyerEmail: row.buyerEmail,
     amount: money(row.amount, row.currency),
-    checkoutIp: maskIp(row.checkoutIp),
+    checkoutIp: opts.maskIps === false ? row.checkoutIp : maskIp(row.checkoutIp),
     checkoutDevice: row.checkoutDevice,
     riskLevel: row.riskLevel,
     createdAt: row.createdAt.toISOString(),

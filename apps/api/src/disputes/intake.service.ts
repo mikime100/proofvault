@@ -15,6 +15,12 @@ const sameSecond = (a: string, b: string) => Math.floor(Date.parse(a) / 1000) ==
 export class IntakeService implements OnModuleInit, OnModuleDestroy {
   private readonly log = new Logger('Intake');
   private timer: NodeJS.Timeout | null = null;
+  private readonly listeners: ((row: DisputeRow) => void)[] = [];
+
+  /** Called with every dispute that is new or whose status changed (analysis listens, #17). */
+  onChange(listener: (row: DisputeRow) => void) {
+    this.listeners.push(listener);
+  }
 
   constructor(
     private readonly prisma: PrismaService,
@@ -49,12 +55,17 @@ export class IntakeService implements OnModuleInit, OnModuleDestroy {
       responseDueAt: d.seller_response_due_date ? new Date(d.seller_response_due_date) : null,
       raw: d as unknown as Prisma.InputJsonValue,
     };
+    const before = await this.prisma.dispute.findUnique({
+      where: { paypalDisputeId: d.dispute_id },
+      select: { status: true },
+    });
     const row = await this.prisma.dispute.upsert({
       where: { paypalDisputeId: d.dispute_id },
       update: fields,
       create: { paypalDisputeId: d.dispute_id, createdAt: new Date(d.create_time), ...fields },
     });
     this.log.log(`ingested ${d.dispute_id} (${row.status}, order ${orderId ?? 'none'})`);
+    if (!before || before.status !== row.status) for (const listener of this.listeners) listener(row);
     return row;
   }
 
