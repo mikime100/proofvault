@@ -1,0 +1,21 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "api",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "--env-file=apps/api/.env",
+        "-e",
+        "process.env.POLL_DISPUTES='false'; process.env.AUTO_ANALYZE='false'; process.env.AUTO_ACTIONS='false'; require('./apps/api/dist/main.js')"
+      ],
+      "port": 3000
+    },
+    {
+      "name": "web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@proofvault/web", "dev"],
+      "port": 5173
+    }
+  ]
+}
