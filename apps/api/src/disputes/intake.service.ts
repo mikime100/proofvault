@@ -3,6 +3,7 @@ import type { Dispute as DisputeRow, Prisma } from '@prisma/client';
 import { DisputeReason, DisputeStatus } from '@proofvault/shared';
 import { PrismaService } from '../db/prisma.service';
 import { PaypalClient, type PaypalDispute } from '../paypal/paypal.client';
+import { PipelineRunnerService } from './pipeline-runner.service';
 
 const POLL_MS = 60_000;
 const sameSecond = (a: string, b: string) => Math.floor(Date.parse(a) / 1000) === Math.floor(Date.parse(b) / 1000);
@@ -19,6 +20,7 @@ export class IntakeService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly prisma: PrismaService,
     private readonly paypal: PaypalClient,
+    private readonly pipelineRunner: PipelineRunnerService,
   ) {}
 
   /** The poll is the backstop for missed webhooks. Off in tests and when POLL_DISPUTES=false. */
@@ -55,6 +57,11 @@ export class IntakeService implements OnModuleInit, OnModuleDestroy {
       create: { paypalDisputeId: d.dispute_id, createdAt: new Date(d.create_time), ...fields },
     });
     this.log.log(`ingested ${d.dispute_id} (${row.status}, order ${orderId ?? 'none'})`);
+
+    // Fire-and-forget: pipeline runs after intake returns so the webhook responds fast.
+    // A failure is caught inside triggerAsync and logged as an analyze action with ok=false.
+    this.pipelineRunner.triggerAsync(row.id);
+
     return row;
   }
 

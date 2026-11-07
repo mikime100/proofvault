@@ -10,6 +10,7 @@ import {
   type SyncResult,
 } from '@proofvault/shared';
 import { ActionsService } from '../actions/actions.service';
+import { PipelineRunnerService } from './pipeline-runner.service';
 import { AppError } from '../common/api-error.filter';
 import { PasscodeGuard } from '../common/passcode.guard';
 import { DisputesService } from './disputes.service';
@@ -22,6 +23,7 @@ export class DisputesController {
     private readonly disputes: DisputesService,
     private readonly intake: IntakeService,
     private readonly actions: ActionsService,
+    private readonly pipelineRunner: PipelineRunnerService,
   ) {}
 
   @Get()
@@ -69,6 +71,14 @@ export class DisputesController {
       throw new AppError(400, 'BAD_SANDBOX_STEP', 'step must be require-evidence or adjudicate');
     }
     return this.actions.sandbox(id, parsedStep.data, parsedBody.data);
+  }
+
+  /** Re-run the pipeline on demand (Closes #20). Requires passcode. */
+  @Post(':id/analyze')
+  @HttpCode(200)
+  @UseGuards(PasscodeGuard)
+  analyze(@Param('id') id: string): Promise<DisputeDetail> {
+    return this.disputes.reanalyze(id, this.pipelineRunner);
   }
 
   @Get(':id')

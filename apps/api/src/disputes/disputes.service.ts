@@ -38,4 +38,12 @@ export class DisputesService {
       allowedActions: allowedActionsOf(row.raw),
     });
   }
+
+  /** Re-runs the pipeline for an existing dispute. Returns the updated detail. */
+  async reanalyze(id: string, runner: import('./pipeline-runner.service').PipelineRunnerService): Promise<DisputeDetail> {
+    const row = await this.prisma.dispute.findUnique({ where: { id } });
+    if (!row) throw new AppError(404, 'DISPUTE_NOT_FOUND', `No dispute with id ${id}`);
+    await runner.run(id);
+    return this.get(id);
+  }
 }
