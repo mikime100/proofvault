@@ -1,10 +1,13 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Link, NavLink, Route, Routes } from 'react-router-dom';
 import { ShieldCheck } from 'lucide-react';
 import { DisputesPage } from './pages/DisputesPage';
 import { DisputeDetailPage } from './pages/DisputeDetailPage';
 import { RulesPage } from './pages/RulesPage';
-import { TriagePage } from './pages/TriagePage';
 import { PasscodeProvider } from './lib/passcode';
+
+// Bryntum is heavy — keep it out of the main bundle.
+const TriagePage = lazy(() => import('./pages/TriagePage').then((m) => ({ default: m.TriagePage })));
 
 export function App() {
   return (
@@ -47,7 +50,14 @@ export function App() {
               <Route path="/" element={<DisputesPage />} />
               <Route path="/disputes/:id" element={<DisputeDetailPage />} />
               <Route path="/rules" element={<RulesPage />} />
-              <Route path="/triage" element={<TriagePage />} />
+              <Route
+                path="/triage"
+                element={
+                  <Suspense fallback={<p className="text-sm text-neutral-500">Loading triage board…</p>}>
+                    <TriagePage />
+                  </Suspense>
+                }
+              />
             </Routes>
           </main>
         </div>
