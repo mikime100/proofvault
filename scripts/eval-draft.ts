@@ -18,17 +18,6 @@ import { SCENARIOS, DEFAULT_RULES } from '../packages/shared/dist/fixtures/index
 import { runPipeline } from '../apps/api/src/pipeline/runPipeline.js';
 import { createLlmClient } from '../apps/api/src/pipeline/llm.js';
 
-// Load .env from apps/api
-import { readFileSync } from 'fs';
-try {
-  const env = readFileSync('apps/api/.env', 'utf8');
-  for (const line of env.split('\n')) {
-    const m = /^([^#=\s]+)\s*=\s*(.*)$/.exec(line.trim());
-    if (m) process.env[m[1]!] ??= m[2]!.replace(/^["']|["']$/g, '');
-  }
-} catch {
-  // No .env file — rely on env vars already set
-}
 
 interface Check {
   id: string;

@@ -38,7 +38,7 @@ export async function runPipeline(
 
   if (!order) {
     flags.push('no_matching_order');
-    return noAction(timeline, 'refund', 'No matching order was found for this dispute.', flags);
+    return noAction(timeline, 'offer', 'No matching order was found for this dispute.', flags);
   }
 
   if (!SUPPORTED_REASONS.includes(dispute.reason)) {
