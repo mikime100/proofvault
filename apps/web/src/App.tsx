@@ -1,4 +1,4 @@
-import { BrowserRouter, Link, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Link, NavLink, Route, Routes } from 'react-router-dom';
 import { ShieldCheck } from 'lucide-react';
 import { DisputesPage } from './pages/DisputesPage';
 import { DisputeDetailPage } from './pages/DisputeDetailPage';
@@ -18,16 +18,27 @@ export function App() {
                 ProofVault
               </Link>
               <span className="text-sm text-neutral-500">Seller dashboard</span>
-              <nav className="ml-auto flex gap-4 text-sm">
-                <Link to="/" className="text-neutral-600 hover:text-neutral-900">
-                  Disputes
-                </Link>
-                <Link to="/rules" className="text-neutral-600 hover:text-neutral-900">
-                  Rules
-                </Link>
-                <Link to="/triage" className="text-neutral-600 hover:text-neutral-900">
-                  Triage
-                </Link>
+              <nav className="ml-auto flex items-center gap-1 rounded-lg bg-neutral-100 p-1 text-sm">
+                {[
+                  { to: '/', label: 'Disputes', end: true },
+                  { to: '/rules', label: 'Rules', end: false },
+                  { to: '/triage', label: 'Triage', end: false },
+                ].map((n) => (
+                  <NavLink
+                    key={n.to}
+                    to={n.to}
+                    end={n.end}
+                    className={({ isActive }) =>
+                      `rounded-md px-3 py-1.5 transition-colors ${
+                        isActive
+                          ? 'bg-white font-medium text-neutral-900 shadow-sm'
+                          : 'text-neutral-600 hover:text-neutral-900'
+                      }`
+                    }
+                  >
+                    {n.label}
+                  </NavLink>
+                ))}
               </nav>
             </div>
           </header>

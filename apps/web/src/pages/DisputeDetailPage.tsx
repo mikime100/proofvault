@@ -10,12 +10,14 @@ import {
   KeyRound,
   LogIn,
   MonitorPlay,
+  RefreshCw,
   ShieldAlert,
 } from 'lucide-react';
 import type { PipelineFlag, TimelineEntry } from '@proofvault/shared';
-import { api } from '../api';
+import { ApiError, api } from '../api';
 import { DecisionBadge } from '../components/DecisionBadge';
-import { fmtDateTime, reasonLabel, statusLabel } from '../lib/format';
+import { StatusBadge } from '../components/StatusBadge';
+import { fmtDateTime, reasonLabel } from '../lib/format';
 import { usePasscode } from '../lib/passcode';
 import { cn } from '../lib/utils';
 
@@ -83,6 +85,7 @@ const ACTION_BUTTONS = [
   { type: 'submit' as const, label: 'Submit evidence', className: 'bg-emerald-600 hover:bg-emerald-700' },
   { type: 'offer' as const, label: 'Make offer', className: 'bg-sky-600 hover:bg-sky-700' },
   { type: 'accept' as const, label: 'Accept claim', className: 'bg-amber-600 hover:bg-amber-700' },
+  { type: 'escalate' as const, label: 'Escalate to PayPal review', className: 'bg-violet-600 hover:bg-violet-700' },
 ];
 
 export function DisputeDetailPage() {
@@ -95,7 +98,7 @@ export function DisputeDetailPage() {
   const refresh = () => qc.invalidateQueries({ queryKey: ['dispute', id] });
 
   const act = useMutation({
-    mutationFn: async (type: 'submit' | 'offer' | 'accept') => {
+    mutationFn: async (type: 'submit' | 'offer' | 'accept' | 'escalate') => {
       const pc = await passcode.require();
       if (!pc) throw new Error('cancelled');
       return api.disputeAction(id, type, pc);
@@ -106,7 +109,12 @@ export function DisputeDetailPage() {
       qc.invalidateQueries({ queryKey: ['disputes'] });
     },
     onError: (e) => {
-      if (!(e instanceof Error && e.message === 'cancelled')) toast.error('Action failed');
+      if (e instanceof Error && e.message === 'cancelled') return;
+      if (e instanceof ApiError && e.code === 'ACTION_NOT_ALLOWED_NOW') {
+        toast.error('PayPal does not allow this right now — hit Refresh and try again in a minute');
+        return;
+      }
+      toast.error('Action failed');
     },
   });
 
@@ -129,7 +137,7 @@ export function DisputeDetailPage() {
   if (detail.isError || !detail.data)
     return <p className="text-sm text-red-600">Could not load dispute {id}.</p>;
 
-  const { dispute, order, analysis, actions } = detail.data;
+  const { dispute, order, analysis, actions, allowedActions } = detail.data;
   const citedIds = new Set(analysis?.accepted.flatMap((c) => c.recordIds) ?? []);
   const entryById = new Map(analysis?.timeline.entries.map((e) => [e.recordId, e]) ?? []);
 
@@ -154,17 +162,21 @@ export function DisputeDetailPage() {
         <span>
           Amount: <span className="font-medium text-neutral-900">{dispute.amount.value} {dispute.amount.currency}</span>
         </span>
-        <span>Status: {statusLabel(dispute.status)}</span>
+        <span className="flex items-center gap-1.5">
+          Status: <StatusBadge status={dispute.status} />
+        </span>
         <span>Score: {dispute.winScore ?? analysis?.score.value ?? '—'}</span>
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        {dispute.status === 'WAITING_FOR_SELLER_RESPONSE' &&
-          ACTION_BUTTONS.map((b) => (
+        {ACTION_BUTTONS.map((b) => {
+          const allowed = allowedActions.includes(b.type);
+          return (
             <button
               key={b.type}
               onClick={() => act.mutate(b.type)}
-              disabled={act.isPending}
+              disabled={act.isPending || !allowed}
+              title={allowed ? undefined : 'PayPal does not allow this right now'}
               className={cn(
                 'rounded-md px-4 py-2 text-sm font-medium text-white disabled:opacity-50',
                 b.className,
@@ -172,10 +184,21 @@ export function DisputeDetailPage() {
             >
               {b.label}
             </button>
-          ))}
-        {dispute.status !== 'WAITING_FOR_SELLER_RESPONSE' && (
+          );
+        })}
+        <button
+          onClick={() => {
+            refresh();
+            qc.invalidateQueries({ queryKey: ['disputes'] });
+          }}
+          title="Re-fetch this dispute — allowed actions change minutes after escalating"
+          className="inline-flex items-center gap-1.5 rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+        >
+          <RefreshCw className="size-4" /> Refresh
+        </button>
+        {allowedActions.length === 0 && (
           <span className="text-sm text-neutral-500">
-            Actions are only available while the dispute waits for the seller.
+            PayPal does not currently allow any actions on this case.
           </span>
         )}
       </div>
