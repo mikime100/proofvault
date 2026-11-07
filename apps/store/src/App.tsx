@@ -231,8 +231,9 @@ export function App() {
               </div>
               <button
                 onClick={() => {
-                  setOpenLesson(openLesson === lesson ? null : lesson);
-                  track('lesson_view', { lesson: String(lesson) });
+                  const opening = openLesson !== lesson;
+                  setOpenLesson(opening ? lesson : null);
+                  if (opening) track('lesson_view', { lesson: String(lesson) });
                 }}
                 className="flex items-center gap-2 py-2 px-3 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
               >

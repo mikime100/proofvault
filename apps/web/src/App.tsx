@@ -5,11 +5,11 @@ import { DisputesPage } from './pages/DisputesPage';
 import { DisputeDetailPage } from './pages/DisputeDetailPage';
 import { RulesPage } from './pages/RulesPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
-import { StudioPage } from './pages/StudioPage';
 import { PasscodeProvider } from './lib/passcode';
 
-// Bryntum is heavy — keep it out of the main bundle.
+// Bryntum + AG Studio are heavy — keep them out of the main bundle.
 const TriagePage = lazy(() => import('./pages/TriagePage').then((m) => ({ default: m.TriagePage })));
+const StudioPage = lazy(() => import('./pages/StudioPage').then((m) => ({ default: m.StudioPage })));
 
 export function App() {
   return (
@@ -55,7 +55,14 @@ export function App() {
               <Route path="/disputes/:id" element={<DisputeDetailPage />} />
               <Route path="/rules" element={<RulesPage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
-              <Route path="/studio" element={<StudioPage />} />
+              <Route
+                path="/studio"
+                element={
+                  <Suspense fallback={<p className="text-sm text-neutral-500">Loading Studio…</p>}>
+                    <StudioPage />
+                  </Suspense>
+                }
+              />
               <Route
                 path="/triage"
                 element={

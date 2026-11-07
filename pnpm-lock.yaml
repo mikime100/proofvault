@@ -166,6 +166,12 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.83.0
         version: 5.105.3(@types/react@19.3.0)(react@19.3.1)
+      ag-studio:
+        specifier: 3.1.0
+        version: 3.1.0
+      ag-studio-react:
+        specifier: ^3.1.0
+        version: 3.1.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -1662,6 +1668,45 @@ packages:
     engines: {node: '>=0.4.0'}
     hasBin: true
 
+  ag-charts-community@14.3.0:
+    resolution: {integrity: sha512-rrvL9hSEFOJ9Y3vKrChlekX4c4wV/zevNGdtufuSIgyDAEh6v8SVRz9DuUdZKhjo8xEXGEfdhbUNmjMHzyYFMQ==}
+
+  ag-charts-core@14.3.0:
+    resolution: {integrity: sha512-8RRcQlIplanR55Y+9x1Mg991zKpY/Wd+v5VyLEgpo7/ZM+1EwfqNf2vur0uj/QqTOUAbA5zJFTqArhOpOLMfKw==}
+
+  ag-charts-enterprise@14.3.0:
+    resolution: {integrity: sha512-wpNwV4rQ27A+CbIXOAwYaCvjT7Hp/FYb+jy3R+SLfP1xuPISjw2kD7rNnHHwfWDn5dqrWNz7bemochlbJ72Q2A==}
+
+  ag-charts-locale@14.3.0:
+    resolution: {integrity: sha512-GnvnGooJyMjAVw3UxtzADsCi2aJQ9p+GsidmHC5KQcEvQCWEatzJ7Y1HFqpv05koM49caILtq1MLr7rYayzilQ==}
+
+  ag-charts-types@14.3.0:
+    resolution: {integrity: sha512-6VtzUYBKN5mFY24/Eye3RUn1AAq7s+/B4hEu83ZOK/Pjqx26tHq2MoxiXlBE8F7oQO0VpjV5rZZaw6wxSpMNJg==}
+
+  ag-grid-community@36.3.0:
+    resolution: {integrity: sha512-0JRaIwE82TuOcx+upA3OnTyhDAIUDqrMxLoBib6yVON0SyfICdpOnwD4QdiT0A1lgrC8SkzLBFRst73bTREF6Q==}
+
+  ag-grid-enterprise@36.3.0:
+    resolution: {integrity: sha512-VZ1t+3MeoSFDlwMvacJbNu+A6b2gSceiaKh44c//DB4mZAMvKxsZAFCw4/51TAw/MkW5FKeVIwpUreHEemkf4g==}
+
+  ag-grid-react@36.3.0:
+    resolution: {integrity: sha512-Ttpb5J7b3oun8AdzTrLnXd5iMyh/G3R1esdG3nXnrfPC4kzFsM3sD0/h/wATE3dw7MH1oEKERa7xvQ+8QLuk1A==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
+  ag-stack@36.3.0:
+    resolution: {integrity: sha512-KbX/b6cM0GIJ4cz6W3jk8YoDG/XpqOC4WurYl8CDuQtER2d4rihjPI4tOLN4LqS0yfVspZ31ED1273kfG+6m0w==}
+
+  ag-studio-react@3.1.0:
+    resolution: {integrity: sha512-Rq32doIg2uKVj0JOlixX6L5zkQg5R7XCXB5IuBQikNe7P3Dju/i/8BqqJITp+j5ka8txPJaQJIQCequjJkG8xA==}
+    peerDependencies:
+      react: ^17.0.0 || ^18.0.0 || ^19.0.0
+      react-dom: ^17.0.0 || ^18.0.0 || ^19.0.0
+
+  ag-studio@3.1.0:
+    resolution: {integrity: sha512-TPPsCOPc+lst557EA4bsck8gsvJaA3p1bZ35q4T6+incCRE6lZtjG595QDQdHk+F/5x37O4fOd2ynuR3vO3GGQ==}
+
   ajv-formats@3.0.1:
     resolution: {integrity: sha512-8iUql50EUR+uUcdRQ3HDqa6EVyo3docL8g5WJ3FNcWmu62IbkGUue/pEyLBW8VGKKucTPgqeks4fIU1DA4yowQ==}
     peerDependencies:
@@ -2576,6 +2621,10 @@ packages:
     resolution: {integrity: sha512-8XPvpAA8uyhfteu8pIvQxpJZ7SYYdpUivZpGy6sFsBuKRY/7rQGavedeB8aK+Zkyq6upMFVL/9AW6vOYzfRyLg==}
     engines: {node: '>=10'}
 
+  loose-envify@1.4.0:
+    resolution: {integrity: sha512-lyuxPGr/Wfhrlem2CL/UcnUc1zcqKAImBDzukY7Y5F/yQiNdko6+fRLevlw1HgMySw7f611UIY408EtxRSoK3Q==}
+    hasBin: true
+
   loupe@3.2.1:
     resolution: {integrity: sha512-CdzqowRJCeLU72bHvWqwRBBlLcMEtIvGrlvef74kMnV2AolS9Y8xUv1I0U/MNAWMhBlKIoyuEgoJ0t/bbwHbLQ==}
 
@@ -2870,6 +2919,9 @@ packages:
       typescript:
         optional: true
 
+  prop-types@15.8.1:
+    resolution: {integrity: sha512-oj87CgZICdulUohogVAR7AjlC0327U4el4L6eAvOqCeudMDVU0NThNaV+b9Df4dXgSP1gXMTnPdhfe/2qDH5cg==}
+
   proxy-addr@2.0.8:
     resolution: {integrity: sha512-5nnx0yGyVUcY6t9RnWcARWtwT9F1D8O9rt08htPvnd49W1IgZtmLkhu9WfMzQj1cFxjHIO6connUNVW5k7AVyQ==}
     engines: {node: '>= 0.10'}
@@ -2900,6 +2952,9 @@ packages:
     resolution: {integrity: sha512-Y0bARz53lhEC1NMCASs0/j+faB/zqt3R8hpvg1e8+61ZVJ4UL0UdC4cBbXfZMcIuhrfgeILTLe+ZeBCavQPtKQ==}
     peerDependencies:
       react: ^19.3.1
+
+  react-is@16.13.1:
+    resolution: {integrity: sha512-24e6ynE2H+OKt4kqsOvNd8kBpV65zoxbA4BVsEOB3ARVWQki/DHzaUoC5KuON/BiccDaCCTZBuOcfZs70kR8bQ==}
 
   react-refresh@0.18.0:
     resolution: {integrity: sha512-QgT5//D3jfjJb6Gsjxv0Slpj23ip+HtOpnNgnb2S5zU3CB26G/IDPGoy4RJB42wzFE46DRsstbW6tKHoKbhAxw==}
@@ -4867,6 +4922,63 @@ snapshots:
 
   acorn@8.19.0: {}
 
+  ag-charts-community@14.3.0:
+    dependencies:
+      ag-charts-core: 14.3.0
+      ag-charts-locale: 14.3.0
+      ag-charts-types: 14.3.0
+
+  ag-charts-core@14.3.0:
+    dependencies:
+      ag-charts-types: 14.3.0
+
+  ag-charts-enterprise@14.3.0:
+    dependencies:
+      ag-charts-community: 14.3.0
+      ag-charts-core: 14.3.0
+
+  ag-charts-locale@14.3.0: {}
+
+  ag-charts-types@14.3.0: {}
+
+  ag-grid-community@36.3.0:
+    dependencies:
+      ag-charts-types: 14.3.0
+      ag-stack: 36.3.0
+
+  ag-grid-enterprise@36.3.0:
+    dependencies:
+      ag-grid-community: 36.3.0
+      ag-stack: 36.3.0
+    optionalDependencies:
+      ag-charts-community: 14.3.0
+      ag-charts-enterprise: 14.3.0
+
+  ag-grid-react@36.3.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
+    dependencies:
+      ag-grid-community: 36.3.0
+      prop-types: 15.8.1
+      react: 19.3.1
+      react-dom: 19.3.1(react@19.3.1)
+
+  ag-stack@36.3.0: {}
+
+  ag-studio-react@3.1.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
+    dependencies:
+      ag-grid-enterprise: 36.3.0
+      ag-grid-react: 36.3.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      ag-stack: 36.3.0
+      ag-studio: 3.1.0
+      react: 19.3.1
+      react-dom: 19.3.1(react@19.3.1)
+
+  ag-studio@3.1.0:
+    dependencies:
+      ag-charts-enterprise: 14.3.0
+      ag-grid-enterprise: 36.3.0
+      ag-stack: 36.3.0
+      tslib: 2.9.1
+
   ajv-formats@3.0.1(ajv@8.18.0):
     optionalDependencies:
       ajv: 8.18.0
@@ -5785,6 +5897,10 @@ snapshots:
       chalk: 4.1.2
       is-unicode-supported: 0.1.0
 
+  loose-envify@1.4.0:
+    dependencies:
+      js-tokens: 4.0.0
+
   loupe@3.2.1: {}
 
   lru-cache@11.5.3: {}
@@ -6045,6 +6161,12 @@ snapshots:
     transitivePeerDependencies:
       - magicast
 
+  prop-types@15.8.1:
+    dependencies:
+      loose-envify: 1.4.0
+      object-assign: 4.1.1
+      react-is: 16.13.1
+
   proxy-addr@2.0.8:
     dependencies:
       forwarded: 0.2.0
@@ -6077,6 +6199,8 @@ snapshots:
     dependencies:
       react: 19.3.1
       scheduler: 0.28.0
+
+  react-is@16.13.1: {}
 
   react-refresh@0.18.0: {}
 
