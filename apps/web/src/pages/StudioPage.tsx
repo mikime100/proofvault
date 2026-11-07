@@ -4,13 +4,16 @@ import { AgStudio } from 'ag-studio-react';
 import {
   AgStudioLicenseManager,
   createAiHarness,
-  directLlmRunner,
   type AgStudioApi,
 } from 'ag-studio';
+import { AgStudioAiModule, AgStudioModuleRegistry } from 'ag-studio';
 import { api } from '../api';
 import { summarize } from '../lib/analytics';
 import { reasonLabel } from '../lib/format';
 import { proofvaultLlm } from '../lib/studioLlm';
+
+// The AI Assistant panel's component lives in this module; without it Studio drops the panel.
+AgStudioModuleRegistry.registerModules([AgStudioAiModule]);
 
 // Licence key from VITE_AG_STUDIO_LICENSE_KEY (apps/web/.env), never committed.
 if (import.meta.env.VITE_AG_STUDIO_LICENSE_KEY) {
@@ -76,10 +79,7 @@ export function StudioPage() {
           data={data}
           mode="edit"
           ai={({ api: coreApi }) =>
-            createAiHarness(coreApi as AgStudioApi, ({ builtIn }) => ({
-              agents: [directLlmRunner({ ...builtIn.lead, adapter: proofvaultLlm })],
-              primary: 'lead',
-            }))
+            createAiHarness(coreApi as AgStudioApi, { adapter: proofvaultLlm, primary: 'lead' })
           }
         />
       </div>
