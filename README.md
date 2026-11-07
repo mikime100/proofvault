@@ -67,5 +67,8 @@ Add components inside the app folder, for example:
 cd apps/web && pnpm dlx shadcn@latest add button
 ```
 
+## Third-party components
+The seller dashboard's triage board (`/triage`) uses Bryntum Scheduler under a trial/hackathon licence — see issue #25.
+
 ## License
 MIT, see [LICENSE](LICENSE).

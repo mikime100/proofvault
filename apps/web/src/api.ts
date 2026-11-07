@@ -25,6 +25,15 @@ async function get<S extends z.ZodType>(path: string, schema: S, fixture: () => 
   return parsed.data as z.infer<S>;
 }
 
+export class ApiError extends Error {
+  constructor(
+    public code: string,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
 async function post<S extends z.ZodType>(
   path: string,
   body: unknown,
@@ -32,15 +41,26 @@ async function post<S extends z.ZodType>(
   fixture: () => Promise<unknown>,
   passcode: string,
 ) {
-  const data = USE_FIXTURES
-    ? await fixture()
-    : await (
-        await fetch(`${API_URL}${path}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', [DEMO_PASSCODE_HEADER]: passcode },
-          body: JSON.stringify(body),
-        })
-      ).json();
+  if (USE_FIXTURES) {
+    const data = await fixture();
+    return schema.parse(data) as z.infer<S>;
+  }
+  const res = await fetch(`${API_URL}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', [DEMO_PASSCODE_HEADER]: passcode },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const code =
+      (data && typeof data === 'object' && 'code' in data && String(data.code)) ||
+      (data && typeof data === 'object' && 'error' in data && String(data.error)) ||
+      `HTTP_${res.status}`;
+    const message =
+      (data && typeof data === 'object' && 'message' in data && String(data.message)) ||
+      `Request failed (${res.status})`;
+    throw new ApiError(code, message);
+  }
   const parsed = schema.safeParse(data);
   if (!parsed.success) {
     console.error(`Contract mismatch on POST ${path}`, parsed.error.issues);
@@ -95,8 +115,8 @@ export const api = {
   dispute: (id: string) =>
     get(`/disputes/${id}`, DisputeDetail, async () => (await fixtures()).disputeDetailFixtures[id]),
 
-  // POST /disputes/:id/actions {type: submit | offer | accept}
-  disputeAction: (id: string, type: 'submit' | 'offer' | 'accept', passcode: string) =>
+  // POST /disputes/:id/actions {type: submit | offer | accept | escalate}
+  disputeAction: (id: string, type: 'submit' | 'offer' | 'accept' | 'escalate', passcode: string) =>
     post(
       `/disputes/${id}/actions`,
       { type },

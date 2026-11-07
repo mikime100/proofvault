@@ -4,6 +4,8 @@ packages:
 
 # Packages allowed to run install scripts (pnpm blocks the rest).
 allowBuilds:
+  '@bryntum/scheduler-trial': false
+  '@bryntum/scheduler-trial-lib': false
   "@prisma/client": true
   "@prisma/engines": true
   "@swc/core": true

@@ -6,4 +6,12 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: { alias: { '@': path.resolve(import.meta.dirname, 'src') } },
+  optimizeDeps: {
+    include: [
+      '@bryntum/scheduler-react-enterprise',
+      '@bryntum/scheduler-enterprise',
+      '@bryntum/core-enterprise',
+      '@bryntum/grid-enterprise',
+    ],
+  },
 });

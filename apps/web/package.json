@@ -11,6 +11,10 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@bryntum/core-enterprise": "8.0.0",
+    "@bryntum/grid-enterprise": "8.0.0",
+    "@bryntum/scheduler-enterprise": "^8.0.0",
+    "@bryntum/scheduler-react-enterprise": "^8.0.0",
     "@proofvault/shared": "workspace:*",
     "@tanstack/react-query": "^5.83.0",
     "clsx": "^2.1.1",

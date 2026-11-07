@@ -6,7 +6,8 @@ import { toast } from 'sonner';
 import type { DisputeListItem } from '@proofvault/shared';
 import { api } from '../api';
 import { DecisionBadge } from '../components/DecisionBadge';
-import { fmtDate, hoursUntil, reasonLabel, statusLabel } from '../lib/format';
+import { StatusBadge } from '../components/StatusBadge';
+import { fmtDate, hoursUntil, reasonLabel } from '../lib/format';
 import { usePasscode } from '../lib/passcode';
 import { cn } from '../lib/utils';
 
@@ -119,7 +120,11 @@ export function DisputesPage() {
           </thead>
           <tbody className="divide-y">
             {items.map((d) => (
-              <tr key={d.id} className="hover:bg-neutral-50">
+              <tr
+                key={d.id}
+                onClick={() => navigate(`/disputes/${d.id}`)}
+                className="cursor-pointer hover:bg-blue-50/60"
+              >
                 <td className="px-4 py-3">
                   <Link to={`/disputes/${d.id}`} className="font-medium text-blue-700 hover:underline">
                     {d.paypalDisputeId}
@@ -130,7 +135,9 @@ export function DisputesPage() {
                 <td className="px-4 py-3 text-right font-medium">
                   {d.amount.value} {d.amount.currency}
                 </td>
-                <td className="px-4 py-3">{statusLabel(d.status)}</td>
+                <td className="px-4 py-3">
+                  <StatusBadge status={d.status} />
+                </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <span>{d.responseDueAt ? fmtDate(d.responseDueAt) : '—'}</span>
@@ -148,9 +155,13 @@ export function DisputesPage() {
       </div>
 
       {items.length === 0 && (
-        <p className="mt-6 flex items-center gap-2 text-sm text-neutral-500">
-          <AlertTriangle className="size-4" /> No disputes yet.
-        </p>
+        <div className="mt-6 flex flex-col items-center gap-2 rounded-lg border border-dashed bg-white px-6 py-12 text-center">
+          <AlertTriangle className="size-6 text-neutral-400" />
+          <p className="text-sm font-medium text-neutral-700">No disputes yet</p>
+          <p className="text-sm text-neutral-500">
+            New PayPal disputes appear here after a sync or webhook.
+          </p>
+        </div>
       )}
     </section>
   );
