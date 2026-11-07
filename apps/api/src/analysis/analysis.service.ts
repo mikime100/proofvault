@@ -4,7 +4,7 @@ import {
   type AccessEvent,
   type DisputeContext,
   type LlmClient,
-  type PipelineResult,
+  PipelineResult,
   SellerRules,
 } from '@proofvault/shared';
 import { AppError } from '../common/api-error.filter';
@@ -55,6 +55,13 @@ export class AnalysisService implements OnModuleInit {
   }
 
   async analyze(disputeId: string): Promise<PipelineResult> {
+    // Once evidence is submitted the package is frozen: it must keep showing exactly what PayPal
+    // received (a re-run rewords the claims). Found in the first live run, Nov 7.
+    const sent = await this.prisma.evidencePackage.findUnique({ where: { disputeId } });
+    if (sent?.submittedAt) {
+      this.log.log(`${disputeId}: evidence already submitted, analysis frozen`);
+      return PipelineResult.parse(sent.analysis);
+    }
     const context = await this.loadContext(disputeId);
     const seller = await this.prisma.seller.findFirst({ orderBy: { createdAt: 'asc' } });
     const rules = SellerRules.parse(seller?.autoActionRules);

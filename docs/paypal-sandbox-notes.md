@@ -47,6 +47,18 @@ Facts from real sandbox calls, not from docs. Add to this whenever PayPal surpri
   seller escalates (about 30 minutes to the claim stage), submit evidence, adjudicate when PayPal allows it.
   So **pre-create the demo disputes the day before** (#27) and record each step when it is ready.
 
+## Nov 7: first full run on Render (case PP-R-OQT-10197028, the live-store purchase)
+- 18:34 buyer opened it. 18:37 our poll found it (about 3 minutes, list lag), matched it to our order by
+  capture id, DeepSeek scored it 90, decision submit. PayPal status UNDER_REVIEW, no actions allowed, agent waited.
+- 18:38 PayPal briefly set WAITING_FOR_SELLER_RESPONSE (still INQUIRY) with `provide_evidence` allowed.
+  The poll saw the change, re-analysis ran, and **the agent submitted the evidence one second later; PayPal
+  accepted it** (PROOF_OF_FULFILLMENT, our PDF attached, claims as notes).
+- **So evidence IS accepted in the inquiry stage** while PayPal waits on the seller. The Nov 6 refusal on the
+  smoke case happened after we had sent a message first. The seller window can be short (about a minute here),
+  which is a reason to keep the poll at 60 seconds and to register the webhook.
+- After the seller's evidence, the case moves to `WAITING_FOR_BUYER_RESPONSE` (the buyer may answer), with
+  links `accept_claim, send_message, escalate`. No seller due date in that state (`seller_response_due_date` missing).
+
 ## Checkout quirks
 - Creating an order without `payment_source.paypal.experience_context.return_url` makes the
   buyer page loop on "Continue to Review Order". Always set `user_action: PAY_NOW` and a `return_url`.

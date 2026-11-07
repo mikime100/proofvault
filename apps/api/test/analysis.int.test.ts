@@ -92,6 +92,20 @@ describe('analysis', () => {
     expect(await prisma.actionLog.count({ where: { disputeId: 'dsp_s1', action: 'analyze' } })).toBe(2);
   });
 
+  it('once evidence is submitted the package is frozen: re-analysis changes nothing and calls no LLM', async () => {
+    await analyze('dsp_s1');
+    await prisma.evidencePackage.update({
+      where: { disputeId: 'dsp_s1' },
+      data: { submittedAt: new Date(), draftResponse: 'exactly what PayPal received' },
+    });
+    fakeLlm.generateJson.mockClear();
+    await analyze('dsp_s1');
+    expect(fakeLlm.generateJson).not.toHaveBeenCalled();
+    const pkg = await prisma.evidencePackage.findUniqueOrThrow({ where: { disputeId: 'dsp_s1' } });
+    expect(pkg.draftResponse).toBe('exactly what PayPal received');
+    expect(await prisma.actionLog.count({ where: { disputeId: 'dsp_s1', action: 'analyze' } })).toBe(1);
+  });
+
   it('the LLM failing still saves a package: flag llm_failed, await_approval', async () => {
     fakeLlm.generateJson.mockRejectedValue(new Error('DeepSeek 503'));
     const detail = DisputeDetail.parse((await analyze('dsp_s1')).body);
