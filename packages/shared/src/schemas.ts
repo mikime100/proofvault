@@ -345,3 +345,81 @@ export const DisputeDetail = z.object({
   allowedActions: z.array(AllowedAction),
 });
 export type DisputeDetail = z.infer<typeof DisputeDetail>;
+
+// ---------- Studio agent (#26): POST /studio/ask ----------
+//
+// The AG Studio dashboard's AI agent uses `directLlmRunner` with an adapter whose
+// `executeTurn(request)` posts the request here. AG Studio writes the prompt, runs the turns and
+// executes its own tools; this route only relays ONE turn to the LLM, so the key stays on the server.
+// Field names mirror AG Studio's own types (AgLlmRequest, AgAiConversationItem, AgAiOutputItem),
+// so the adapter can send Studio's request as-is and hand the response's `output` straight back.
+
+const StudioText = z.object({ type: z.literal('text'), text: z.string() }).passthrough();
+
+/** One item of the conversation so far, as AG Studio sends it. Unknown content kinds are ignored. */
+export const StudioConversationItem = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('message'),
+    role: z.enum(['user', 'system', 'assistant']),
+    content: z.array(z.object({ type: z.string(), text: z.string().optional() }).passthrough()),
+  }).passthrough(),
+  z.object({ type: z.literal('function_call'), callId: z.string(), name: z.string(), arguments: z.string() }).passthrough(),
+  z.object({ type: z.literal('function_call_output'), callId: z.string(), output: z.string() }).passthrough(),
+  z.object({ type: z.literal('reasoning') }).passthrough(),
+]);
+export type StudioConversationItem = z.infer<typeof StudioConversationItem>;
+
+export const StudioToolSchema = z.object({
+  name: z.string(),
+  description: z.string().default(''),
+  parameters: z.record(z.string(), z.unknown()),
+}).passthrough();
+
+/** AG Studio's AgLlmRequest. Caps keep one turn from running up the LLM bill. */
+export const StudioTurnRequest = z.object({
+  input: z.array(StudioConversationItem).max(200),
+  instructions: z.string().max(100_000).optional(),
+  tools: z.array(StudioToolSchema).max(64).optional(),
+  toolChoice: z.union([z.enum(['auto', 'none', 'required']), z.object({ name: z.string() })]).optional(),
+  responseFormat: z
+    .union([
+      z.object({ type: z.literal('text') }),
+      z.object({ type: z.literal('json'), name: z.string(), description: z.string().optional(), schema: z.unknown() }),
+    ])
+    .default({ type: 'text' }),
+}).passthrough();
+export type StudioTurnRequest = z.infer<typeof StudioTurnRequest>;
+
+/** AG Studio's AgAiOutputMessage. */
+export const StudioOutputMessage = z.object({
+  id: z.string(),
+  kind: z.literal('output'),
+  type: z.literal('message'),
+  role: z.literal('assistant'),
+  status: z.literal('completed'),
+  content: z.array(StudioText.extend({ annotations: z.array(z.unknown()) })),
+});
+
+/** AG Studio's AgAiToolCall. `arguments` is a JSON string, as Studio expects. */
+export const StudioToolCall = z.object({
+  id: z.string(),
+  kind: z.literal('output'),
+  type: z.literal('function_call'),
+  callId: z.string(),
+  name: z.string(),
+  arguments: z.string(),
+  status: z.literal('completed'),
+});
+
+/** AG Studio's AgLlmResponse: pass `output` back as the turn's result and build stream events from it. */
+export const StudioTurnResponse = z.object({
+  id: z.string(),
+  createdAt: z.number(),
+  status: z.enum(['completed', 'incomplete', 'failed']),
+  output: z.array(z.union([StudioOutputMessage, StudioToolCall])),
+  model: z.string().optional(),
+  usage: z.object({ inputTokens: z.number(), outputTokens: z.number() }).optional(),
+  incompleteDetails: z.object({ reason: z.literal('max_output_tokens') }).optional(),
+  error: z.object({ code: z.string(), message: z.string() }).optional(),
+});
+export type StudioTurnResponse = z.infer<typeof StudioTurnResponse>;
