@@ -43,7 +43,12 @@ export class IntakeService implements OnModuleInit, OnModuleDestroy {
   /** Loads one case from PayPal and saves it. Returns our row. */
   async ingest(paypalDisputeId: string): Promise<DisputeRow> {
     const d = await this.paypal.getDispute(paypalDisputeId);
-    const orderId = await this.matchOrder(d);
+    // Never forget a match already made: a thin reload must not unlink the case from its order.
+    const known = await this.prisma.dispute.findUnique({
+      where: { paypalDisputeId: d.dispute_id },
+      select: { orderId: true },
+    });
+    const orderId = (await this.matchOrder(d)) ?? known?.orderId ?? null;
     const status = DisputeStatus.safeParse(d.status);
     const reason = DisputeReason.safeParse(d.reason);
     const fields = {

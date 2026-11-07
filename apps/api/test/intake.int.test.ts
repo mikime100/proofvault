@@ -74,6 +74,7 @@ describe('dispute intake', () => {
   });
   afterEach(async () => {
     delete process.env.DEMO_PASSCODE;
+    await prisma.outcome.deleteMany({ where: { dispute: { paypalDisputeId: { startsWith: 'PP-TEST-' } } } });
     await prisma.dispute.deleteMany({ where: { paypalDisputeId: { startsWith: 'PP-TEST-' } } });
     await prisma.webhookEvent.deleteMany({ where: { id: { startsWith: 'WH-EVT-TEST-' } } });
   });
@@ -126,6 +127,15 @@ describe('dispute intake', () => {
       await http().post('/webhooks/paypal').send(event('WH-EVT-TEST-5b', 'PP-TEST-5', 'CUSTOMER.DISPUTE.RESOLVED')).expect(200);
       const row = await prisma.dispute.findUniqueOrThrow({ where: { paypalDisputeId: 'PP-TEST-5' } });
       expect(row.status).toBe('RESOLVED');
+    });
+
+    it('a later reload without payment details keeps the order link it already found', async () => {
+      cases.set('PP-TEST-12', paypalCase('PP-TEST-12', { seller_transaction_id: 'TEST-INTAKE-CAPTURE' }));
+      await http().post('/webhooks/paypal').send(event('WH-EVT-TEST-12a', 'PP-TEST-12')).expect(200);
+      cases.set('PP-TEST-12', paypalCase('PP-TEST-12', {}, 'UNDER_REVIEW'));
+      await http().post('/webhooks/paypal').send(event('WH-EVT-TEST-12b', 'PP-TEST-12', 'CUSTOMER.DISPUTE.UPDATED')).expect(200);
+      const row = await prisma.dispute.findUniqueOrThrow({ where: { paypalDisputeId: 'PP-TEST-12' } });
+      expect(row).toMatchObject({ orderId: 'ord_test_intake', status: 'UNDER_REVIEW' });
     });
 
     it('a webhook PayPal does not confirm: 401, nothing saved', async () => {

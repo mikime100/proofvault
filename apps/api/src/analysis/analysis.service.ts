@@ -23,6 +23,12 @@ import { LLM_CLIENT } from './llm.provider';
 export class AnalysisService implements OnModuleInit {
   private readonly log = new Logger('Analysis');
   private readonly running = new Set<Promise<unknown>>();
+  private readonly listeners: ((disputeId: string, result: PipelineResult) => Promise<void>)[] = [];
+
+  /** Called after every saved analysis (the executor listens, #21). Awaited, so settled() covers it. */
+  onAnalyzed(listener: (disputeId: string, result: PipelineResult) => Promise<void>) {
+    this.listeners.push(listener);
+  }
 
   constructor(
     private readonly prisma: PrismaService,
@@ -77,6 +83,9 @@ export class AnalysisService implements OnModuleInit {
       `Score ${result.score.value}, decision ${result.decision.action}, ${result.accepted.length} claims kept, ${result.rejected.length} removed${flags}`,
     );
     this.log.log(`analysed ${disputeId}: score ${result.score.value}, ${result.decision.action}`);
+    for (const listener of this.listeners) {
+      await listener(disputeId, result).catch((e: unknown) => this.log.warn(`after-analysis step failed: ${String(e)}`));
+    }
     return result;
   }
 
