@@ -10,6 +10,7 @@ import {
   type SyncResult,
 } from '@proofvault/shared';
 import { ActionsService } from '../actions/actions.service';
+import { AnalysisService } from '../analysis/analysis.service';
 import { AppError } from '../common/api-error.filter';
 import { PasscodeGuard } from '../common/passcode.guard';
 import { DisputesService } from './disputes.service';
@@ -22,6 +23,7 @@ export class DisputesController {
     private readonly disputes: DisputesService,
     private readonly intake: IntakeService,
     private readonly actions: ActionsService,
+    private readonly analysis: AnalysisService,
   ) {}
 
   @Get()
@@ -46,6 +48,15 @@ export class DisputesController {
     if (!parsed.success) throw new AppError(400, 'BAD_CASE_ID', 'caseId must look like PP-R-ABC-12345678');
     const row = await this.intake.ingest(parsed.data.caseId);
     return this.disputes.get(row.id);
+  }
+
+  /** Run the AI pipeline again now (decision 6: replaces the saved analysis). Waits for it. */
+  @Post(':id/analyze')
+  @HttpCode(200)
+  @UseGuards(PasscodeGuard)
+  async analyze(@Param('id') id: string): Promise<DisputeDetail> {
+    await this.analysis.analyze(id);
+    return this.disputes.get(id);
   }
 
   /** The seller's buttons: submit evidence, offer, accept, message. Answers with the log entry. */

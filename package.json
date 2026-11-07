@@ -3,7 +3,9 @@
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.20.0",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "build:shared": "pnpm --filter @proofvault/shared build",
     "dev": "pnpm build:shared && pnpm --filter @proofvault/sdk build && pnpm -r --parallel --filter !@proofvault/shared dev",
@@ -15,7 +17,8 @@
     "check": "pnpm build && pnpm typecheck && pnpm lint && pnpm test",
     "test:int": "pnpm --filter @proofvault/api test:int",
     "db:reset": "pnpm build:shared && pnpm --filter @proofvault/api db:reset",
-    "smoke": "tsx --env-file=apps/api/.env scripts/smoke.ts"
+    "smoke": "tsx --env-file=apps/api/.env scripts/smoke.ts",
+    "eval:draft": "tsx --env-file=apps/api/.env scripts/eval-draft.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.0",

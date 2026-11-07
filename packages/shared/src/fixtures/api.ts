@@ -100,7 +100,10 @@ const action = (disputeId: string, a: ActionLogEntry['action'], detail: string):
   createdAt: '2026-11-04T14:00:00Z',
 });
 
-export const disputeDetailFixtures: Record<string, DisputeDetail> = {
+// Seed cases were never loaded from PayPal, so no restriction is known (decision 16).
+const ALL_ACTIONS: DisputeDetail['allowedActions'] = ['submit', 'offer', 'accept', 'message', 'escalate'];
+
+const details: Record<string, Omit<DisputeDetail, 'allowedActions'>> = {
   dsp_s1: {
     dispute: { ...S1.dispute, winScore: 88 },
     order: S1.order,
@@ -147,10 +150,15 @@ export const disputeDetailFixtures: Record<string, DisputeDetail> = {
   },
 };
 
+export const disputeDetailFixtures: Record<string, DisputeDetail> = Object.fromEntries(
+  Object.entries(details).map(([id, d]) => [id, { ...d, allowedActions: ALL_ACTIONS }]),
+);
+
 export const disputeListFixture: DisputeList = {
   items: Object.values(disputeDetailFixtures).map((d) => ({
     ...d.dispute,
     decision: d.analysis?.decision.action ?? null,
     buyerEmail: d.order?.buyerEmail ?? null,
+    allowedActions: d.allowedActions,
   })),
 };

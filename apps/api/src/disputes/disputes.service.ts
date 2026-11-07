@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { DisputeDetail, DisputeList } from '@proofvault/shared';
 import { AppError } from '../common/api-error.filter';
 import { PrismaService } from '../db/prisma.service';
-import { toAction, toAnalysis, toDispute, toOrder } from './mappers';
+import { allowedActionsOf, toAction, toAnalysis, toDispute, toOrder } from './mappers';
 
 @Injectable()
 export class DisputesService {
@@ -19,6 +19,7 @@ export class DisputesService {
         ...toDispute(row),
         decision: row.evidence ? toAnalysis(row.evidence.analysis).decision.action : null,
         buyerEmail: row.order?.buyerEmail ?? null,
+        allowedActions: allowedActionsOf(row.raw),
       })),
     });
   }
@@ -34,6 +35,7 @@ export class DisputesService {
       order: row.order ? toOrder(row.order) : null,
       analysis: row.evidence ? toAnalysis(row.evidence.analysis) : null,
       actions: row.actions.map(toAction),
+      allowedActions: allowedActionsOf(row.raw),
     });
   }
 }

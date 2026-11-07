@@ -25,8 +25,11 @@ const fakePaypal = {
   sendMessage: vi.fn(async () => ({ links: [] })),
   requireEvidence: vi.fn(async () => ({ links: [] })),
   adjudicate: vi.fn(async () => ({ links: [] })),
-  // Refresh after an action: the case moved on PayPal's side.
+  escalate: vi.fn(async () => ({ links: [] })),
+  // Refresh before and after an action. Cases whose id contains LIMITED only allow a message,
+  // like a real case right after escalating; the rest come back without links (no restriction known).
   getDispute: vi.fn(async (id: string) => ({
+    ...(id.includes('LIMITED') ? { links: [{ rel: 'self' }, { rel: 'send_message' }] } : {}),
     dispute_id: id,
     create_time: '2026-11-06T10:00:00.000Z',
     update_time: '2026-11-06T11:00:00.000Z',
@@ -43,12 +46,14 @@ describe('dispute actions', () => {
   const http = () => request(app.getHttpServer());
   let n = 0;
 
-  const newDispute = async () => {
+  const newDispute = async (opts: { limited?: boolean } = {}) => {
     const id = `dsp_test_act_${n++}`;
     await prisma.dispute.create({
       data: {
         id,
-        paypalDisputeId: `PP-TEST-ACT-${n}`,
+        paypalDisputeId: `PP-TEST-ACT-${opts.limited ? 'LIMITED-' : ''}${n}`,
+        // A saved PayPal copy, so the action reloads it and reads the current links.
+        ...(opts.limited ? { raw: { links: [{ rel: 'self' }] } } : {}),
         orderId: 'ord_s1',
         reason: 'MERCHANDISE_OR_SERVICE_NOT_RECEIVED',
         amount: '49.00',
@@ -152,6 +157,39 @@ describe('dispute actions', () => {
       const id = await newDispute();
       await act(id, { type: 'refund-everything' }).expect(400);
       await act('dsp_nope', { type: 'accept' }).expect(404);
+    });
+  });
+
+  describe('decision 16: only what PayPal allows right now', () => {
+    it('an action PayPal does not list: 409 ACTION_NOT_ALLOWED_NOW, PayPal never called, nothing logged', async () => {
+      const id = await newDispute({ limited: true });
+      const res = await act(id, { type: 'offer' }).expect(409);
+      expect(res.body.error.code).toBe('ACTION_NOT_ALLOWED_NOW');
+      expect(res.body.error.message).toContain('Allowed: message');
+      expect(fakePaypal.makeOffer).not.toHaveBeenCalled();
+      expect(await prisma.actionLog.count({ where: { disputeId: id } })).toBe(0);
+    });
+
+    it('reloads the case first, so a just-allowed action goes through', async () => {
+      const id = await newDispute({ limited: true });
+      await act(id, { type: 'message', text: 'Access log available.' }).expect(200);
+      expect(fakePaypal.getDispute).toHaveBeenCalled();
+    });
+
+    it('detail and list show the allowed actions', async () => {
+      const id = await newDispute({ limited: true });
+      await act(id, { type: 'message', text: 'refresh' }).expect(200);
+      const detail = await http().get(`/disputes/${id}`).expect(200);
+      expect(detail.body.allowedActions).toEqual(['message']);
+      const list = await http().get('/disputes').expect(200);
+      expect(list.body.items.find((d: { id: string }) => d.id === id).allowedActions).toEqual(['message']);
+    });
+
+    it('escalate reaches PayPal with a default note and is logged', async () => {
+      const id = await newDispute();
+      const res = await act(id, { type: 'escalate' }).expect(200);
+      expect(ActionLogEntry.parse(res.body)).toMatchObject({ action: 'escalate', ok: true });
+      expect(fakePaypal.escalate).toHaveBeenCalledWith(expect.any(String), { note: expect.stringContaining('review') });
     });
   });
 

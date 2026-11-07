@@ -144,6 +144,7 @@ enum ActionType {
   offer
   accept
   message
+  escalate
   require_evidence
   adjudicate
   analyze

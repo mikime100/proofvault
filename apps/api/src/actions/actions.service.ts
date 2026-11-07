@@ -11,7 +11,7 @@ import {
 } from '@proofvault/shared';
 import { AppError } from '../common/api-error.filter';
 import { PrismaService } from '../db/prisma.service';
-import { toAction } from '../disputes/mappers';
+import { allowedActionsOf, toAction } from '../disputes/mappers';
 import { IntakeService } from '../disputes/intake.service';
 import { PaypalClient, PaypalError } from '../paypal/paypal.client';
 import { renderEvidencePdf } from '../pipeline';
@@ -40,8 +40,18 @@ export class ActionsService {
   ) {}
 
   async act(disputeId: string, req: DisputeActionRequest, actor: Actor): Promise<ActionLogEntry> {
-    const dispute = await this.find(disputeId);
+    const dispute = await this.fresh(await this.find(disputeId));
     const id = dispute.paypalDisputeId;
+
+    // Decision 16: only do what PayPal allows right now. Saves a refused call and a confusing error.
+    const allowed = allowedActionsOf(dispute.raw);
+    if (!allowed.includes(req.type)) {
+      throw new AppError(
+        409,
+        'ACTION_NOT_ALLOWED_NOW',
+        `PayPal does not allow "${req.type}" on this case right now. Allowed: ${allowed.join(', ') || 'nothing yet'}`,
+      );
+    }
 
     switch (req.type) {
       case 'submit': {
@@ -72,6 +82,10 @@ export class ActionsService {
         const note = req.note ?? 'We accept the claim and refund the full amount.';
         return this.run(dispute, 'accept', actor, { note }, () => this.paypal.acceptClaim(id, { note }));
       }
+      case 'escalate': {
+        const note = req.note ?? 'The buyer had full access to the digital product; we ask PayPal to review our evidence.';
+        return this.run(dispute, 'escalate', actor, { note }, () => this.paypal.escalate(id, { note }));
+      }
       case 'message':
         return this.run(dispute, 'message', actor, { message: req.text }, () =>
           this.paypal.sendMessage(id, { message: req.text }),
@@ -90,6 +104,15 @@ export class ActionsService {
     }
     const outcome = body.outcome ?? 'SELLER_FAVOR';
     return this.run(dispute, 'adjudicate', 'seller', { outcome }, () => this.paypal.adjudicate(id, outcome));
+  }
+
+  /**
+   * Reloads the case from PayPal so the allowed actions are current (they change within minutes).
+   * Seed cases with made-up PayPal ids cannot be reloaded; then the saved copy is used.
+   */
+  private async fresh(dispute: DisputeRow): Promise<DisputeRow> {
+    if (!dispute.raw) return dispute;
+    return this.intake.ingest(dispute.paypalDisputeId).catch(() => dispute);
   }
 
   private async find(disputeId: string): Promise<DisputeRow> {
