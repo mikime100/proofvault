@@ -4,6 +4,8 @@ import { ShieldCheck } from 'lucide-react';
 import { DisputesPage } from './pages/DisputesPage';
 import { DisputeDetailPage } from './pages/DisputeDetailPage';
 import { RulesPage } from './pages/RulesPage';
+import { AnalyticsPage } from './pages/AnalyticsPage';
+import { StudioPage } from './pages/StudioPage';
 import { PasscodeProvider } from './lib/passcode';
 
 // Bryntum is heavy — keep it out of the main bundle.
@@ -25,6 +27,8 @@ export function App() {
                 {[
                   { to: '/', label: 'Disputes', end: true },
                   { to: '/rules', label: 'Rules', end: false },
+                  { to: '/analytics', label: 'Analytics', end: false },
+                  { to: '/studio', label: 'Studio', end: false },
                   { to: '/triage', label: 'Triage', end: false },
                 ].map((n) => (
                   <NavLink
@@ -50,6 +54,8 @@ export function App() {
               <Route path="/" element={<DisputesPage />} />
               <Route path="/disputes/:id" element={<DisputeDetailPage />} />
               <Route path="/rules" element={<RulesPage />} />
+              <Route path="/analytics" element={<AnalyticsPage />} />
+              <Route path="/studio" element={<StudioPage />} />
               <Route
                 path="/triage"
                 element={
