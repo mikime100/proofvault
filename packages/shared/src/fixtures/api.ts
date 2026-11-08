@@ -101,11 +101,21 @@ const action = (disputeId: string, a: ActionLogEntry['action'], detail: string):
 });
 
 // Seed cases were never loaded from PayPal, so no restriction is known (decision 16).
-const ALL_ACTIONS: DisputeDetail['allowedActions'] = ['submit', 'offer', 'accept', 'message', 'escalate'];
+const ALL_ACTIONS: DisputeDetail['allowedActions'] = [
+  'submit',
+  'offer',
+  'accept',
+  'message',
+  'escalate',
+  'adjudicate',
+  'require_evidence',
+];
+/** Seed cases were never loaded from PayPal, so no stage is known; none is resolved. */
+const NOT_LOADED = { stage: null, outcome: null } as const;
 
 const details: Record<string, Omit<DisputeDetail, 'allowedActions'>> = {
   dsp_s1: {
-    dispute: { ...S1.dispute, winScore: 88 },
+    dispute: { ...S1.dispute, winScore: 88, ...NOT_LOADED },
     order: S1.order,
     analysis: analysis(S1, 88, 'submit', [
       { text: 'The buyer viewed all 4 lessons between 2026-11-01 and 2026-11-03.', recordIds: ['evt_s1_2', 'evt_s1_3', 'evt_s1_5', 'evt_s1_6'] },
@@ -114,7 +124,7 @@ const details: Record<string, Omit<DisputeDetail, 'allowedActions'>> = {
     actions: [action('dsp_s1', 'analyze', 'Pipeline ran'), action('dsp_s1', 'submit', 'Evidence submitted')],
   },
   dsp_s2: {
-    dispute: { ...S2.dispute, winScore: 52 },
+    dispute: { ...S2.dispute, winScore: 52, ...NOT_LOADED },
     order: S2.order,
     analysis: analysis(S2, 52, 'await_approval', [
       { text: 'The buyer logged in on 2026-11-02 and viewed lesson 1.', recordIds: ['evt_s2_1', 'evt_s2_2'] },
@@ -122,19 +132,19 @@ const details: Record<string, Omit<DisputeDetail, 'allowedActions'>> = {
     actions: [action('dsp_s2', 'analyze', 'Pipeline ran')],
   },
   dsp_s3: {
-    dispute: { ...S3.dispute, winScore: 12 },
+    dispute: { ...S3.dispute, winScore: 12, ...NOT_LOADED },
     order: S3.order,
     analysis: analysis(S3, 12, 'accept', [], [], ['no_access_events']),
     actions: [action('dsp_s3', 'analyze', 'Pipeline ran'), action('dsp_s3', 'accept', 'Claim accepted, refund issued')],
   },
   dsp_s4: {
-    dispute: S4.dispute,
+    dispute: { ...S4.dispute, ...NOT_LOADED },
     order: null,
     analysis: analysis(S4, 0, 'await_approval', [], [], ['no_matching_order']),
     actions: [action('dsp_s4', 'analyze', 'Pipeline ran')],
   },
   dsp_s5: {
-    dispute: { ...S5.dispute, winScore: 52 },
+    dispute: { ...S5.dispute, winScore: 52, ...NOT_LOADED },
     order: S5.order,
     analysis: analysis(
       S5,

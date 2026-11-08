@@ -28,8 +28,15 @@ const fakePaypal = {
   escalate: vi.fn(async () => ({ links: [] })),
   // Refresh before and after an action. Cases whose id contains LIMITED only allow a message,
   // like a real case right after escalating; the rest come back without links (no restriction known).
+  // Cases whose id contains CLAIM are in the claim stage with sandbox adjudicate allowed (Nov 8, PP-R-HUT-10197163).
   getDispute: vi.fn(async (id: string) => ({
     ...(id.includes('LIMITED') ? { links: [{ rel: 'self' }, { rel: 'send_message' }] } : {}),
+    ...(id.includes('CLAIM')
+      ? {
+          dispute_life_cycle_stage: 'CHARGEBACK',
+          links: [{ rel: 'self' }, { rel: 'adjudicate' }, { rel: 'require_evidence' }, { rel: 'provide_supporting_info' }],
+        }
+      : {}),
     dispute_id: id,
     create_time: '2026-11-06T10:00:00.000Z',
     update_time: '2026-11-06T11:00:00.000Z',
@@ -46,14 +53,15 @@ describe('dispute actions', () => {
   const http = () => request(app.getHttpServer());
   let n = 0;
 
-  const newDispute = async (opts: { limited?: boolean } = {}) => {
+  const newDispute = async (opts: { limited?: boolean; claim?: boolean } = {}) => {
     const id = `dsp_test_act_${n++}`;
+    const kind = opts.limited ? 'LIMITED-' : opts.claim ? 'CLAIM-' : '';
     await prisma.dispute.create({
       data: {
         id,
-        paypalDisputeId: `PP-TEST-ACT-${opts.limited ? 'LIMITED-' : ''}${n}`,
+        paypalDisputeId: `PP-TEST-ACT-${kind}${n}`,
         // A saved PayPal copy, so the action reloads it and reads the current links.
-        ...(opts.limited ? { raw: { links: [{ rel: 'self' }] } } : {}),
+        ...(opts.limited || opts.claim ? { raw: { links: [{ rel: 'self' }] } } : {}),
         orderId: 'ord_s1',
         reason: 'MERCHANDISE_OR_SERVICE_NOT_RECEIVED',
         amount: '49.00',
@@ -200,6 +208,25 @@ describe('dispute actions', () => {
       await http().post(`/disputes/${id}/sandbox/adjudicate`).expect(200);
       expect(fakePaypal.requireEvidence).toHaveBeenCalledWith(expect.any(String), 'SELLER_EVIDENCE');
       expect(fakePaypal.adjudicate).toHaveBeenCalledWith(expect.any(String), 'SELLER_FAVOR');
+    });
+
+    it('#45: a step PayPal does not list yet: 409, PayPal never called, nothing logged', async () => {
+      const id = await newDispute({ limited: true });
+      const res = await http().post(`/disputes/${id}/sandbox/adjudicate`).expect(409);
+      expect(res.body.error.code).toBe('ACTION_NOT_ALLOWED_NOW');
+      expect(fakePaypal.adjudicate).not.toHaveBeenCalled();
+      expect(await prisma.actionLog.count({ where: { disputeId: id } })).toBe(0);
+    });
+
+    it('#45: once PayPal lists adjudicate it goes through, and the case shows its stage and the sandbox steps', async () => {
+      const id = await newDispute({ claim: true });
+      await http().post(`/disputes/${id}/sandbox/adjudicate`).expect(200);
+      expect(fakePaypal.adjudicate).toHaveBeenCalledOnce();
+      const detail = await http().get(`/disputes/${id}`).expect(200);
+      expect(detail.body.dispute).toMatchObject({ stage: 'CHARGEBACK', outcome: null });
+      expect(detail.body.allowedActions).toEqual(['adjudicate', 'require_evidence']);
+      const list = await http().get('/disputes').expect(200);
+      expect(list.body.items.find((d: { id: string }) => d.id === id)).toMatchObject({ stage: 'CHARGEBACK' });
     });
 
     it('unknown step: 400; live PayPal: 403', async () => {

@@ -1,10 +1,11 @@
 // Database rows -> the shared contract. Every IP is masked here, so nothing unmasked leaves the api.
-import type { ActionLog, Dispute as DisputeRow, Order as OrderRow } from '@prisma/client';
+import type { ActionLog, Dispute as DisputeRow, Order as OrderRow, Outcome as OutcomeRow } from '@prisma/client';
 import {
   type ActionLogEntry,
   AllowedAction,
   type Dispute,
   DisputeReason,
+  type DisputeView,
   DisputeStatus,
   type Money,
   type Order,
@@ -26,6 +27,11 @@ export function toDispute(row: DisputeRow): Dispute {
     winScore: row.winScore,
     createdAt: row.createdAt.toISOString(),
   };
+}
+
+/** The dashboard's view: the dispute plus PayPal's stage and our recorded outcome. */
+export function toDisputeView(row: DisputeRow & { outcome?: Pick<OutcomeRow, 'result'> | null }): DisputeView {
+  return { ...toDispute(row), stage: stageOf(row.raw), outcome: row.outcome?.result ?? null };
 }
 
 /** For API responses the checkout IP is masked; the pipeline gets it in full (it compares IPs). */
@@ -63,6 +69,8 @@ const REL_TO_ACTION: Record<string, AllowedAction> = {
   accept_claim: 'accept',
   send_message: 'message',
   escalate: 'escalate',
+  adjudicate: 'adjudicate',
+  require_evidence: 'require_evidence',
 };
 
 /**

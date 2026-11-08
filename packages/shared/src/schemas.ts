@@ -273,10 +273,26 @@ export const CaptureOrderResponse = z.object({
  * Buttons and the auto-action executor act only on these; anything else PayPal would refuse.
  * When the case has never been loaded from PayPal (seed data), every action is listed.
  */
-export const AllowedAction = z.enum(['submit', 'offer', 'accept', 'message', 'escalate']);
+/** `adjudicate` and `require_evidence` are sandbox-only steps (#45); PayPal lists them when they are allowed. */
+export const AllowedAction = z.enum(['submit', 'offer', 'accept', 'message', 'escalate', 'adjudicate', 'require_evidence']);
 export type AllowedAction = z.infer<typeof AllowedAction>;
 
-export const DisputeListItem = Dispute.extend({
+/** How a closed case ended for the seller (the api's Outcome row). */
+export const OutcomeResult = z.enum(['won', 'lost', 'refunded', 'offer_accepted']);
+export type OutcomeResult = z.infer<typeof OutcomeResult>;
+
+/**
+ * A dispute as the dashboard sees it: the pipeline's Dispute plus where PayPal has it and how it ended.
+ * `stage` is PayPal's `dispute_life_cycle_stage` as sent (INQUIRY, CHARGEBACK, PRE_ARBITRATION,
+ * ARBITRATION), null for cases never loaded from PayPal. `outcome` is null until the case is resolved.
+ */
+export const DisputeView = Dispute.extend({
+  stage: z.string().nullable(),
+  outcome: OutcomeResult.nullable(),
+});
+export type DisputeView = z.infer<typeof DisputeView>;
+
+export const DisputeListItem = DisputeView.extend({
   decision: DecisionAction.nullable(),
   buyerEmail: z.string().nullable(),
   allowedActions: z.array(AllowedAction),
@@ -337,7 +353,7 @@ export const ActionLogEntry = z.object({
 export type ActionLogEntry = z.infer<typeof ActionLogEntry>;
 
 export const DisputeDetail = z.object({
-  dispute: Dispute,
+  dispute: DisputeView,
   order: Order.nullable(),
   /** Null until the pipeline has run. */
   analysis: PipelineResult.nullable(),

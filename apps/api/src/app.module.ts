@@ -4,11 +4,12 @@ import { DisputesModule } from './disputes/disputes.module';
 import { HealthController } from './health.controller';
 import { PaypalModule } from './paypal/paypal.module';
 import { StoreModule } from './store/store.module';
+import { SellerModule } from './seller/seller.module';
 import { StudioModule } from './studio/studio.module';
 import { TrackingModule } from './tracking/tracking.module';
 
 @Module({
-  imports: [DbModule, PaypalModule, DisputesModule, StoreModule, TrackingModule, StudioModule],
+  imports: [DbModule, PaypalModule, DisputesModule, StoreModule, TrackingModule, StudioModule, SellerModule],
   controllers: [HealthController],
 })
 export class AppModule {}

@@ -231,6 +231,9 @@ describe('auto-action executor', () => {
         const outcome = await prisma.outcome.findUnique({ where: { disputeId: res.body.dispute.id } });
         expect(outcome?.result).toBe('won');
       });
+      // The dashboard sees the real result, not a guess from the status.
+      const detail = await request(app.getHttpServer()).get(`/disputes/${res.body.dispute.id}`).expect(200);
+      expect(detail.body.dispute.outcome).toBe('won');
       delete process.env.RECORD_OUTCOMES;
       await prisma.outcome.deleteMany({ where: { disputeId: res.body.dispute.id } });
       await prisma.dispute.delete({ where: { id: res.body.dispute.id } });

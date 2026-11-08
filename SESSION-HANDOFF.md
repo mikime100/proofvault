@@ -62,7 +62,7 @@ Claude (decided Nov 6; key Mike can pay for).
   DeepSeek draft and reasons, decide, evidence PDF, `runPipeline`. `pnpm eval:draft` passes S1 to S4
   on real DeepSeek with zero invented claims.
 - **Analysis + agent (Mike):** new or changed disputes are analysed in the background; the evidence
-  package is **frozen once submitted**; the executor acts at most once per case, only while PayPal
+  package is **frozen once submitted**; the executor acts at most once per PayPal stage (#44), only while PayPal
   waits on the seller, only on PayPal's currently allowed actions (decision 16); outcomes recorded.
 - **Dashboard (Moges):** list, detail (claims linked to records, timeline, activity), buttons gated
   by `allowedActions`, Escalate/Refresh, rules page, passcode dialog, Bryntum triage board,
