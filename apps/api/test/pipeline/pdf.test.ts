@@ -5,8 +5,6 @@ import { buildTimeline, renderEvidencePdf } from '../../src/pipeline';
 
 const scenario = (id: 'S1' | 'S2' | 'S3' | 'S4' | 'S5') => SCENARIOS.find((s) => s.id === id)!;
 
-// A realistic S1 result using the real buildTimeline (IPs full in the timeline object,
-// as Mike's timeline.ts intends — the PDF must mask them itself).
 const S1_RESULT: PipelineResult = (() => {
   const timeline = buildTimeline(scenario('S1').context);
   return {
@@ -39,11 +37,15 @@ describe('renderEvidencePdf', () => {
     expect(buf.length).toBeLessThan(5 * 1024 * 1024);
   });
 
-  it('the PDF buffer never contains the full checkout IP (renderEvidencePdf masks via maskIp)', async () => {
-    // The timeline has full IPs (196.188.12.7); the pdf must not expose them.
-    // PDF streams are binary-compressed so we check the uncompressed cross-reference trailer
-    // text. The full IP string must not appear anywhere in the raw bytes.
+  it('the PDF never contains the full checkout IP (renderEvidencePdf masks via maskIp)', async () => {
     const buf = await renderEvidencePdf(S1_RESULT);
     expect(buf.indexOf(Buffer.from('196.188.12.7'))).toBe(-1);
+  });
+
+  it('the PDF does not include the rejected-claims section (internal QA, not for PayPal)', async () => {
+    // "Removed" in hex is 52656d6f766564 — only present if "Removed by guardrail" was written.
+    // This is the most sensitive check: rejected claims are internal QA, not evidence for PayPal.
+    const buf = await renderEvidencePdf(S1_RESULT);
+    expect(buf.indexOf(Buffer.from('52656d6f766564', 'hex'))).toBe(-1);
   });
 });
