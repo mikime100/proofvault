@@ -60,7 +60,10 @@ export class AnalysisService implements OnModuleInit {
     const sent = await this.prisma.evidencePackage.findUnique({ where: { disputeId } });
     if (sent?.submittedAt) {
       this.log.log(`${disputeId}: evidence already submitted, analysis frozen`);
-      return PipelineResult.parse(sent.analysis);
+      const frozen = PipelineResult.parse(sent.analysis);
+      // #44: the case may have moved to a new stage (a claim) that waits on the seller again.
+      await this.notify(disputeId, frozen);
+      return frozen;
     }
     const context = await this.loadContext(disputeId);
     const seller = await this.prisma.seller.findFirst({ orderBy: { createdAt: 'asc' } });
@@ -90,10 +93,14 @@ export class AnalysisService implements OnModuleInit {
       `Score ${result.score.value}, decision ${result.decision.action}, ${result.accepted.length} claims kept, ${result.rejected.length} removed${flags}`,
     );
     this.log.log(`analysed ${disputeId}: score ${result.score.value}, ${result.decision.action}`);
+    await this.notify(disputeId, result);
+    return result;
+  }
+
+  private async notify(disputeId: string, result: PipelineResult) {
     for (const listener of this.listeners) {
       await listener(disputeId, result).catch((e: unknown) => this.log.warn(`after-analysis step failed: ${String(e)}`));
     }
-    return result;
   }
 
   /** Everything the pipeline needs, with full IPs (it compares them; the api masks on the way out). */

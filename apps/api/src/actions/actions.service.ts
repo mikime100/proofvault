@@ -11,7 +11,7 @@ import {
 } from '@proofvault/shared';
 import { AppError } from '../common/api-error.filter';
 import { PrismaService } from '../db/prisma.service';
-import { allowedActionsOf, toAction } from '../disputes/mappers';
+import { allowedActionsOf, stageOf, toAction } from '../disputes/mappers';
 import { IntakeService } from '../disputes/intake.service';
 import { PaypalClient, PaypalError } from '../paypal/paypal.client';
 import { renderEvidencePdf } from '../pipeline';
@@ -142,6 +142,7 @@ export class ActionsService {
           disputeId: dispute.id,
           action,
           actor,
+          stage: stageOf(dispute.raw),
           ok: true,
           detail: `${action} sent to PayPal`,
           request: request as Prisma.InputJsonValue,
@@ -158,6 +159,7 @@ export class ActionsService {
           disputeId: dispute.id,
           action,
           actor,
+          stage: stageOf(dispute.raw),
           ok: false,
           detail: `PayPal refused ${action}: ${e.issue}`,
           request: request as Prisma.InputJsonValue,

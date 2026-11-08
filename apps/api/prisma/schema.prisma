@@ -163,6 +163,8 @@ model ActionLog {
   actor     Actor
   ok        Boolean
   detail    String
+  /// PayPal's lifecycle stage (INQUIRY, CHARGEBACK, ...) when the action was taken. Null on older rows.
+  stage     String?
   request   Json?
   response  Json?
   createdAt DateTime   @default(now())

@@ -4,13 +4,15 @@ import { ActionsService } from '../actions/actions.service';
 import { AnalysisService } from '../analysis/analysis.service';
 import { AppError } from '../common/api-error.filter';
 import { PrismaService } from '../db/prisma.service';
+import { stageOf } from '../disputes/mappers';
 
 /**
  * #21: the agent carries out its own decision, inside the seller's rules.
  *
- * Decision 9: at most once per dispute, never after anyone (agent or seller) has acted on it,
- * and only while PayPal is waiting on the seller. A failed agent attempt counts as acting, so
- * there are no retry loops. Decision 10 follows: a rejected offer never gets a second auto offer.
+ * Decision 9: at most once per PayPal stage (inquiry, then claim), never after anyone (agent or
+ * seller) has acted in that stage, and only while PayPal is waiting on the seller. A failed agent
+ * attempt counts as acting, so there are no retry loops. An action with no known stage (older rows)
+ * counts in every stage. Decision 10: the agent never makes a second offer, in any stage.
  * Decision 16: ActionsService refuses what PayPal does not allow right now; the agent then waits
  * and may act on a later analysis, once PayPal allows it and still nobody has acted.
  */
@@ -41,11 +43,21 @@ export class ExecutorService implements OnModuleInit {
 
     const dispute = await this.prisma.dispute.findUnique({
       where: { id: disputeId },
-      select: { status: true, actions: { where: { action: { not: 'analyze' } }, select: { id: true } } },
+      select: {
+        status: true,
+        raw: true,
+        actions: { where: { action: { not: 'analyze' } }, select: { action: true, stage: true } },
+      },
     });
     if (!dispute) return this.skip(disputeId, 'dispute gone');
     if (dispute.status !== 'WAITING_FOR_SELLER_RESPONSE') return this.skip(disputeId, `status is ${dispute.status}`);
-    if (dispute.actions.length > 0) return this.skip(disputeId, 'someone already acted on it');
+    const stage = stageOf(dispute.raw);
+    if (dispute.actions.some((a) => a.stage === null || a.stage === stage)) {
+      return this.skip(disputeId, `someone already acted in stage ${stage ?? 'unknown'}`);
+    }
+    if (request.type === 'offer' && dispute.actions.some((a) => a.action === 'offer')) {
+      return this.skip(disputeId, 'an offer was already made (decision 10)');
+    }
 
     try {
       await this.actions.act(disputeId, request, 'agent');
