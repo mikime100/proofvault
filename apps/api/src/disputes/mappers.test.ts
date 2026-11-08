@@ -24,6 +24,19 @@ describe('allowedActionsOf (decision 16)', () => {
   });
 
   it('never loaded from PayPal (seed data): every action listed', () => {
-    expect(allowedActionsOf(null)).toEqual(['submit', 'offer', 'accept', 'message', 'escalate']);
+    expect(allowedActionsOf(null)).toEqual([
+      'submit',
+      'offer',
+      'accept',
+      'message',
+      'escalate',
+      'adjudicate',
+      'require_evidence',
+    ]);
+  });
+
+  it('#45: sandbox adjudicate and require_evidence come through when PayPal lists them', () => {
+    const raw = { links: [{ rel: 'self' }, { rel: 'adjudicate' }, { rel: 'require_evidence' }, { rel: 'accept_claim' }] };
+    expect(allowedActionsOf(raw)).toEqual(['adjudicate', 'require_evidence', 'accept']);
   });
 });

@@ -96,8 +96,19 @@ export class ActionsService {
   /** Sandbox only: push a case to the evidence stage, or decide it, for the demo. */
   async sandbox(disputeId: string, step: SandboxStep, body: SandboxStepBody): Promise<ActionLogEntry> {
     if (process.env.PAYPAL_ENV === 'live') throw new AppError(403, 'SANDBOX_ONLY', 'Only available in the PayPal sandbox');
-    const dispute = await this.find(disputeId);
+    const dispute = await this.fresh(await this.find(disputeId));
     const id = dispute.paypalDisputeId;
+    // #45: PayPal lists these in the case links once allowed (adjudicate came ~30 min after the
+    // claim-stage evidence on Nov 8). Asking earlier is always refused, so do not ask.
+    const action = step === 'adjudicate' ? 'adjudicate' : 'require_evidence';
+    const allowed = allowedActionsOf(dispute.raw);
+    if (!allowed.includes(action)) {
+      throw new AppError(
+        409,
+        'ACTION_NOT_ALLOWED_NOW',
+        `PayPal does not allow "${step}" on this case yet. Allowed: ${allowed.join(', ') || 'nothing yet'}`,
+      );
+    }
     if (step === 'require-evidence') {
       const party = body.party ?? 'SELLER_EVIDENCE';
       return this.run(dispute, 'require_evidence', 'seller', { party }, () => this.paypal.requireEvidence(id, party));
