@@ -75,6 +75,11 @@ export function allowedActionsOf(raw: unknown): AllowedAction[] {
   return [...new Set(links.map((l) => REL_TO_ACTION[l.rel ?? '']).filter((a): a is AllowedAction => !!a))];
 }
 
+/** PayPal's lifecycle stage on the last copy we loaded (INQUIRY, CHARGEBACK, ...), or null if unknown. */
+export function stageOf(raw: unknown): string | null {
+  return (raw as { dispute_life_cycle_stage?: string } | null)?.dispute_life_cycle_stage ?? null;
+}
+
 export function toAction(row: ActionLog): ActionLogEntry {
   return {
     id: row.id,

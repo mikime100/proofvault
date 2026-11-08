@@ -8,6 +8,7 @@ import { LLM_CLIENT } from '../../src/analysis/llm.provider';
 import { AppModule } from '../../src/app.module';
 import { ApiErrorFilter } from '../../src/common/api-error.filter';
 import { PrismaService } from '../../src/db/prisma.service';
+import { IntakeService } from '../../src/disputes/intake.service';
 import { outcomeOf } from '../../src/executor/outcome.service';
 import { PaypalClient, PaypalError } from '../../src/paypal/paypal.client';
 
@@ -21,7 +22,7 @@ const fakeLlm = {
 };
 
 /** What PayPal says about each case when it is reloaded: status, links, outcome. */
-const paypalState = new Map<string, { status: string; links?: string[]; outcome?: string }>();
+const paypalState = new Map<string, { status: string; links?: string[]; outcome?: string; stage?: string }>();
 /** Like real PayPal: every reload names the payment, so intake can match the order. */
 const captureOf = new Map<string, string>();
 const ok = async () => ({ links: [] });
@@ -41,6 +42,7 @@ const fakePaypal = {
       status: s.status,
       dispute_amount: { currency_code: 'USD', value: '49.00' },
       disputed_transactions: [{ seller_transaction_id: captureOf.get(id) ?? 'UNKNOWN' }],
+      ...(s.stage ? { dispute_life_cycle_stage: s.stage } : {}),
       ...(s.links ? { links: s.links.map((rel) => ({ rel })) } : {}),
       ...(s.outcome ? { dispute_outcome: { outcome_code: s.outcome } } : {}),
     };
@@ -165,6 +167,52 @@ describe('auto-action executor', () => {
     await analyze(id);
     expect(fakePaypal.provideEvidence).toHaveBeenCalledOnce();
     expect((await logs(id)).map((l) => [l.action, l.ok])).toEqual([['submit', false]]);
+  });
+
+  describe('#44: once per PayPal stage, not once per case', () => {
+    const inquiry = { status: 'WAITING_FOR_SELLER_RESPONSE', stage: 'INQUIRY', links: ['provide_evidence', 'escalate', 'accept_claim'] };
+    const claim = { status: 'WAITING_FOR_SELLER_RESPONSE', stage: 'CHARGEBACK', links: ['provide_evidence', 'accept_claim'] };
+    const raw = { dispute_life_cycle_stage: 'INQUIRY', links: inquiry.links.map((rel) => ({ rel })) };
+
+    /** Inquiry: agent submits. Seller escalates. PayPal turns it into a claim and the case is reloaded. */
+    const toClaimStage = async () => {
+      const { id, paypalDisputeId } = await newDispute('ord_s1', { raw });
+      paypalState.set(paypalDisputeId, inquiry);
+      await analyze(id);
+      await request(app.getHttpServer()).post(`/disputes/${id}/actions`).send({ type: 'escalate' }).expect(200);
+      paypalState.set(paypalDisputeId, claim);
+      await app.get(IntakeService).ingest(paypalDisputeId);
+      return { id, paypalDisputeId };
+    };
+
+    it('the claim stage waits on the seller: the agent resubmits the frozen evidence by itself, once', async () => {
+      const { id } = await toClaimStage();
+      await analyze(id);
+      await analyze(id);
+      expect(fakePaypal.provideEvidence).toHaveBeenCalledTimes(2);
+      expect((await logs(id)).map((l) => [l.action, l.actor, l.stage])).toEqual([
+        ['submit', 'agent', 'INQUIRY'],
+        ['escalate', 'seller', 'INQUIRY'],
+        ['submit', 'agent', 'CHARGEBACK'],
+      ]);
+    });
+
+    it('a seller action in the claim stage keeps the agent out of that stage', async () => {
+      const { id } = await toClaimStage();
+      await prisma.actionLog.create({
+        data: { disputeId: id, action: 'message', actor: 'seller', ok: true, detail: 'seller wrote', stage: 'CHARGEBACK' },
+      });
+      await analyze(id);
+      expect(fakePaypal.provideEvidence).toHaveBeenCalledOnce();
+    });
+
+    it('an action with no known stage (older rows) counts in every stage', async () => {
+      const { id, paypalDisputeId } = await newDispute('ord_s1', { raw: { ...raw, dispute_life_cycle_stage: 'CHARGEBACK' } });
+      paypalState.set(paypalDisputeId, claim);
+      await prisma.actionLog.create({ data: { disputeId: id, action: 'submit', actor: 'agent', ok: true, detail: 'old' } });
+      await analyze(id);
+      expect(fakePaypal.provideEvidence).not.toHaveBeenCalled();
+    });
   });
 
   it('kill switch AUTO_ACTIONS=false: analysis runs, nothing is done', async () => {

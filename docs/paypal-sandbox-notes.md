@@ -59,6 +59,16 @@ Facts from real sandbox calls, not from docs. Add to this whenever PayPal surpri
 - After the seller's evidence, the case moves to `WAITING_FOR_BUYER_RESPONSE` (the buyer may answer), with
   links `accept_claim, send_message, escalate`. No seller due date in that state (`seller_response_due_date` missing).
 
+## Nov 8: first case won (PP-R-HUT-10197163, live store purchase)
+- Same start as Nov 7: poll found it in about 3 minutes, agent submitted evidence in the short seller window.
+- Escalating reached the claim stage (`CHARGEBACK`, links `provide_evidence, accept_claim`) in **4 minutes**, not 30.
+- After the claim-stage evidence the case sat at `UNDER_REVIEW` / `UNDER_PAYPAL_REVIEW` with links
+  `self, provide_supporting_info`. Adjudicate was refused then.
+- About **30 minutes after that evidence**, PayPal added `adjudicate, accept_claim, require_evidence` to the links.
+  **Adjudicate only works once its link is there.** Our `allowedActions` drops unknown links, so check `raw->'links'`.
+- Adjudicate `SELLER_FAVOR` was then accepted; about 3 minutes later the case was `RESOLVED`, outcome code
+  `RESOLVED_SELLER_FAVOUR`, and our Outcome row said `won`.
+
 ## Checkout quirks
 - Creating an order without `payment_source.paypal.experience_context.return_url` makes the
   buyer page loop on "Continue to Review Order". Always set `user_action: PAY_NOW` and a `return_url`.

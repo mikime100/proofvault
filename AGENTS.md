@@ -3,6 +3,7 @@
 Read by any AI coding tool (Claude Code reads it through `CLAUDE.md`). Humans: the same rules apply to you.
 
 ## Read first
+- `SESSION-HANDOFF.md`: current state, live URLs, open work and gotchas. **Start here in a new chat.**
 - `PLAN.md`: what we are building and the schedule.
 - `INTEGRATION.md`: the team standard. Section 2 holds the 16 agreed contract decisions; do not contradict them.
 - `docs/paypal-sandbox-notes.md`: how the PayPal sandbox actually behaves.
