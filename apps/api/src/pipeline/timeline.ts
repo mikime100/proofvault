@@ -1,4 +1,5 @@
 import type { AccessEvent, DisputeContext, Timeline, TimelineEntry } from '@proofvault/shared';
+import { reasonLabel } from './reason';
 
 function describeEvent(e: AccessEvent): string {
   switch (e.type) {
@@ -76,7 +77,7 @@ export function buildTimeline({ dispute, order, events }: DisputeContext): Timel
     source: 'dispute',
     type: 'dispute_opened',
     at: dispute.createdAt,
-    summary: `Dispute opened: ${dispute.reason}`,
+    summary: `Buyer opened a PayPal dispute: ${reasonLabel(dispute.reason).toLowerCase()}`,
   });
   // Stable sort: records with the same time keep the order above.
   entries.sort((a, b) => Date.parse(a.at) - Date.parse(b.at));

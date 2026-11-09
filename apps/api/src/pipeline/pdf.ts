@@ -1,47 +1,78 @@
 import PDFDocument from 'pdfkit';
 import { maskIp } from '@proofvault/shared';
-import type { PipelineResult, TimelineEntry } from '@proofvault/shared';
+import type { DisputeReason, PipelineResult, TimelineEntry } from '@proofvault/shared';
+import { reasonLabel } from './reason';
+
+/**
+ * Extra context that the PDF benefits from but that lives outside PipelineResult.
+ * All fields are optional — the PDF degrades gracefully if they are not supplied.
+ */
+export interface EvidenceMeta {
+  /** PayPal's own case id, e.g. PP-R-HUT-10197163. */
+  paypalDisputeId?: string;
+  /** Human-readable product name, e.g. "Figma to Code: Mini Course". */
+  productName?: string;
+  /** PayPal reason enum — rendered as plain English in the PDF. */
+  reason?: DisputeReason;
+}
+
+/** "2026-11-03T09:00:00Z" → "2026-11-03 09:00 UTC" */
+function fmtDate(iso: string): string {
+  return iso.replace('T', ' ').replace(/:\d{2}(\.\d+)?Z$/, ' UTC').replace(/Z$/, ' UTC');
+}
 
 /**
  * Render the evidence package as a PDF buffer for PayPal's provide-evidence upload.
  *
  * This document goes directly to PayPal's dispute reviewer. It contains ONLY evidence:
- * the timeline of what happened and when, and the claims backed by records. It does NOT
- * contain our internal win score, LLM-generated reasons, recommendation, or decision —
- * those are for the seller dashboard, not for PayPal.
+ * the timeline of what happened and when, and the response built from accepted claims.
+ * It does NOT contain our internal win score, LLM reasons, recommendation, or decision.
  *
- * The timeline from runPipeline keeps IPs full (the api masks them at the HTTP boundary).
- * The PDF is sent directly to PayPal, so we mask every timeline IP here ourselves.
+ * If there are no accepted claims the response section is omitted entirely — we do not
+ * tell PayPal "no evidence-backed claims were produced", which would hurt the seller.
+ *
+ * The timeline keeps IPs full until here; we mask them before writing to the PDF.
  * Output stays well under PayPal's 5 MB upload limit.
  */
-export async function renderEvidencePdf(result: PipelineResult): Promise<Buffer> {
+export async function renderEvidencePdf(
+  result: PipelineResult,
+  meta: EvidenceMeta = {},
+): Promise<Buffer> {
   const doc = new PDFDocument({ margin: 40, compress: false });
   const chunks: Buffer[] = [];
   doc.on('data', (chunk: Buffer) => chunks.push(chunk));
   const finished = new Promise<Buffer>((resolve) => doc.on('end', () => resolve(Buffer.concat(chunks))));
 
+  // Header
   doc.font('Helvetica-Bold').fontSize(18).text('Evidence Package');
   doc.moveDown(0.5);
-
   doc.font('Helvetica').fontSize(11);
-  doc.text(`Dispute: ${result.timeline.disputeId}`);
+  if (meta.paypalDisputeId) doc.text(`Case: ${meta.paypalDisputeId}`);
+  if (meta.productName)     doc.text(`Product: ${meta.productName}`);
+  if (meta.reason)          doc.text(`Dispute reason: ${reasonLabel(meta.reason)}`);
   doc.moveDown(0.5);
 
-  doc.font('Helvetica-Bold').fontSize(14).text('Evidence timeline');
+  // Access history (exclude the dispute-opened entry — that's our metadata, not access)
+  doc.font('Helvetica-Bold').fontSize(14).text('Access history');
   doc.font('Helvetica').fontSize(10);
-  for (const e of result.timeline.entries) {
-    const parts = [e.at, e.type, e.summary];
-    if (e.ip) parts.push(`IP ${maskEntry(e)}`);
-    if (e.device) parts.push(`device ${e.device}`);
-    doc.text(parts.join('   |   '));
+  const accessEntries = result.timeline.entries.filter((e) => e.source !== 'dispute');
+  if (accessEntries.length === 0) {
+    doc.text('No access events were recorded for this order.');
+  } else {
+    for (const e of accessEntries) {
+      const parts: string[] = [fmtDate(e.at), e.summary];
+      if (e.ip) parts.push(`IP ${maskEntry(e)}`);
+      if (e.device) parts.push(e.device);
+      doc.text(parts.join('   |   '));
+    }
   }
   doc.moveDown(0.5);
 
-  doc.font('Helvetica-Bold').fontSize(14).text('Response');
-  doc.font('Helvetica').fontSize(11);
-  if (result.accepted.length === 0) {
-    doc.text('No evidence-backed claims were produced for this dispute.');
-  } else {
+  // Seller response — only when there are accepted claims.
+  // If there are none, omit the section. Never tell PayPal "no evidence was produced".
+  if (result.accepted.length > 0) {
+    doc.font('Helvetica-Bold').fontSize(14).text('Seller response');
+    doc.font('Helvetica').fontSize(11);
     for (const c of result.accepted) {
       doc.text(`- ${c.text}`);
     }
