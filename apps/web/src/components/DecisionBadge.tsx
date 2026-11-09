@@ -1,27 +1,18 @@
 import type { DecisionAction } from '@proofvault/shared';
-import { cn } from '../lib/utils';
+import { Badge } from './ui/badge';
 
-const STYLES: Record<DecisionAction, string> = {
-  submit: 'bg-emerald-100 text-emerald-800',
-  offer: 'bg-sky-100 text-sky-800',
-  accept: 'bg-amber-100 text-amber-800',
-  await_approval: 'bg-neutral-200 text-neutral-700',
-};
-
-const LABELS: Record<DecisionAction, string> = {
-  submit: 'Auto-submit',
+const LABEL: Record<DecisionAction, string> = {
+  submit: 'Fight with evidence',
   offer: 'Make offer',
-  accept: 'Accept claim',
-  await_approval: 'Needs approval',
+  accept: 'Refund',
+  await_approval: 'Needs your call',
 };
 
+/** What the agent decided for this case (decision 3). Plain text: it is a label, not a status. */
 export function DecisionBadge({ action }: { action: DecisionAction | null }) {
-  if (!action) {
-    return <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-500">Not analyzed</span>;
-  }
   return (
-    <span className={cn('rounded-full px-2 py-0.5 text-xs font-medium', STYLES[action])}>
-      {LABELS[action]}
-    </span>
+    <Badge variant="outline" className="font-normal text-muted-foreground">
+      {action ? LABEL[action] : 'Not analysed'}
+    </Badge>
   );
 }
