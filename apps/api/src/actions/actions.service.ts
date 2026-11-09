@@ -14,7 +14,7 @@ import { PrismaService } from '../db/prisma.service';
 import { allowedActionsOf, toAction } from '../disputes/mappers';
 import { IntakeService } from '../disputes/intake.service';
 import { PaypalClient, PaypalError } from '../paypal/paypal.client';
-import { renderEvidencePdf } from '../pipeline';
+import { renderEvidencePdf, type EvidenceMeta } from '../pipeline';
 
 /** PayPal evidence type per dispute reason (decision 12). Anything else goes in as OTHER. */
 const EVIDENCE_TYPE: Partial<Record<DisputeReason, string>> = {
@@ -57,9 +57,18 @@ export class ActionsService {
       case 'submit': {
         const pkg = await this.prisma.evidencePackage.findUnique({ where: { disputeId } });
         if (!pkg) throw new AppError(409, 'NO_EVIDENCE_PACKAGE', 'This dispute has not been analysed yet');
+        // Load product name for the PDF header (best-effort; omitted if not found).
+        const order = dispute.orderId
+          ? await this.prisma.order.findUnique({ where: { id: dispute.orderId }, include: { product: { select: { name: true } } } })
+          : null;
+        const meta: EvidenceMeta = {
+          paypalDisputeId: dispute.paypalDisputeId,
+          productName: order?.product?.name,
+          reason: dispute.reason as DisputeReason,
+        };
         let pdf: Buffer;
         try {
-          pdf = await renderEvidencePdf(PipelineResult.parse(pkg.analysis));
+          pdf = await renderEvidencePdf(PipelineResult.parse(pkg.analysis), meta);
         } catch (e) {
           throw new AppError(409, 'PDF_NOT_AVAILABLE', `Could not build the evidence PDF: ${String(e)}`);
         }

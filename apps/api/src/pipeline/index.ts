@@ -5,6 +5,6 @@ export { checkClaims } from './claims';
 export { scoreDispute } from './score';
 export { draftResponse, DraftError } from './draft';
 export { explainScore } from './explain';
-export { renderEvidencePdf } from './pdf';
+export { renderEvidencePdf, type EvidenceMeta } from './pdf';
 export { runPipeline } from './runPipeline';
 export { decide } from '../rules/decide';
