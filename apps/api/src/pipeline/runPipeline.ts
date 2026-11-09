@@ -3,6 +3,7 @@ import type {
   Claim,
   Decision,
   DisputeContext,
+  DisputeReason,
   LlmClient,
   PipelineFlag,
   PipelineResult,
@@ -17,6 +18,7 @@ import { checkClaims } from './claims';
 import { scoreDispute } from './score';
 import { draftResponse, DraftError } from './draft';
 import { explainScore } from './explain';
+import { reasonLabel } from './reason';
 import { decide } from '../rules/decide';
 
 /**
@@ -46,7 +48,7 @@ export async function runPipeline(
     return noAction(
       timeline,
       'refund',
-      `Reason ${dispute.reason} is not supported for automated scoring.`,
+      `Reason "${reasonLabel(dispute.reason)}" is not supported for automated scoring.`,
       flags,
     );
   }
@@ -75,7 +77,7 @@ export async function runPipeline(
   }
 
   const score: Score = scoreDispute(timeline, dispute.reason);
-  score.reasons = llmFailed ? fallbackReasons(score) : await explainOrFallback(score, deps.llm);
+  score.reasons = llmFailed ? fallbackReasons(score) : await explainOrFallback(score, deps.llm, dispute.reason);
 
   const decision: Decision = llmFailed
     ? { action: 'await_approval', reason: 'Manual review: the model did not return a valid draft.' }
@@ -111,9 +113,9 @@ function noAction(
   };
 }
 
-async function explainOrFallback(score: Score, llm: LlmClient): Promise<string[]> {
+async function explainOrFallback(score: Score, llm: LlmClient, reason: DisputeReason): Promise<string[]> {
   try {
-    return await explainScore(score, llm);
+    return await explainScore(score, llm, reason);
   } catch {
     return fallbackReasons(score);
   }

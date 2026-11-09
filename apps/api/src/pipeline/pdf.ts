@@ -1,6 +1,7 @@
 import PDFDocument from 'pdfkit';
 import { maskIp } from '@proofvault/shared';
 import type { DisputeReason, PipelineResult, TimelineEntry } from '@proofvault/shared';
+import { reasonLabel } from './reason';
 
 /**
  * Extra context that the PDF benefits from but that lives outside PipelineResult.
@@ -14,24 +15,6 @@ export interface EvidenceMeta {
   /** PayPal reason enum — rendered as plain English in the PDF. */
   reason?: DisputeReason;
 }
-
-/**
- * Map PayPal's reason enum to plain English for PayPal's dispute reviewer.
- * The raw enum string (MERCHANDISE_OR_SERVICE_NOT_RECEIVED) must never appear
- * in a document sent to a human.
- */
-const REASON_LABELS: Record<string, string> = {
-  MERCHANDISE_OR_SERVICE_NOT_RECEIVED: 'Item not received',
-  MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED: 'Item not as described',
-  UNAUTHORISED: 'Unauthorised transaction',
-  CREDIT_NOT_PROCESSED: 'Credit not processed',
-  DUPLICATE_TRANSACTION: 'Duplicate transaction',
-  INCORRECT_AMOUNT: 'Incorrect amount',
-  PAYMENT_BY_OTHER_MEANS: 'Payment by other means',
-  CANCELED_RECURRING_BILLING: 'Cancelled recurring billing',
-  PROBLEM_WITH_REMITTANCE: 'Problem with remittance',
-  OTHER: 'Other',
-};
 
 /** "2026-11-03T09:00:00Z" → "2026-11-03 09:00 UTC" */
 function fmtDate(iso: string): string {
@@ -66,7 +49,7 @@ export async function renderEvidencePdf(
   doc.font('Helvetica').fontSize(11);
   if (meta.paypalDisputeId) doc.text(`Case: ${meta.paypalDisputeId}`);
   if (meta.productName)     doc.text(`Product: ${meta.productName}`);
-  if (meta.reason)          doc.text(`Dispute reason: ${REASON_LABELS[meta.reason] ?? meta.reason}`);
+  if (meta.reason)          doc.text(`Dispute reason: ${reasonLabel(meta.reason)}`);
   doc.moveDown(0.5);
 
   // Access history (exclude the dispute-opened entry — that's our metadata, not access)
