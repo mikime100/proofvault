@@ -7,6 +7,7 @@ import {
   DisputeList,
   Health,
   SellerRules,
+  SyncResult,
 } from '@proofvault/shared';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -15,7 +16,13 @@ const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
 const USE_FIXTURES = import.meta.env.VITE_USE_FIXTURES === 'true';
 
 async function get<S extends z.ZodType>(path: string, schema: S, fixture: () => Promise<unknown>) {
-  const data = USE_FIXTURES ? await fixture() : await (await fetch(`${API_URL}${path}`)).json();
+  let data: unknown;
+  if (USE_FIXTURES) data = await fixture();
+  else {
+    const res = await fetch(`${API_URL}${path}`);
+    data = await res.json().catch(() => null);
+    if (!res.ok) throw errorOf(data, res.status);
+  }
   const parsed = schema.safeParse(data);
   if (!parsed.success) {
     console.error(`Contract mismatch on GET ${path}`, parsed.error.issues);
@@ -34,66 +41,58 @@ export class ApiError extends Error {
   }
 }
 
-async function post<S extends z.ZodType>(
+/** Error body from the api: { error: { code, message } } (apps/api common/api-error.filter.ts). */
+function errorOf(data: unknown, status: number): ApiError {
+  const err =
+    data && typeof data === 'object' && 'error' in data && data.error && typeof data.error === 'object'
+      ? (data.error as { code?: unknown; message?: unknown })
+      : null;
+  return new ApiError(
+    typeof err?.code === 'string' ? err.code : `HTTP_${status}`,
+    typeof err?.message === 'string' ? err.message : `Request failed (${status})`,
+  );
+}
+
+async function send<S extends z.ZodType>(
+  method: 'POST' | 'PUT',
   path: string,
   body: unknown,
   schema: S,
   fixture: () => Promise<unknown>,
   passcode: string,
 ) {
-  if (USE_FIXTURES) {
-    const data = await fixture();
-    return schema.parse(data) as z.infer<S>;
-  }
+  if (USE_FIXTURES) return schema.parse(await fixture()) as z.infer<S>;
   const res = await fetch(`${API_URL}${path}`, {
-    method: 'POST',
+    method,
     headers: { 'Content-Type': 'application/json', [DEMO_PASSCODE_HEADER]: passcode },
     body: JSON.stringify(body),
   });
-  const data = await res.json().catch(() => null);
-  if (!res.ok) {
-    const code =
-      (data && typeof data === 'object' && 'code' in data && String(data.code)) ||
-      (data && typeof data === 'object' && 'error' in data && String(data.error)) ||
-      `HTTP_${res.status}`;
-    const message =
-      (data && typeof data === 'object' && 'message' in data && String(data.message)) ||
-      `Request failed (${res.status})`;
-    throw new ApiError(code, message);
-  }
+  const data: unknown = await res.json().catch(() => null);
+  if (!res.ok) throw errorOf(data, res.status);
   const parsed = schema.safeParse(data);
   if (!parsed.success) {
-    console.error(`Contract mismatch on POST ${path}`, parsed.error.issues);
+    console.error(`Contract mismatch on ${method} ${path}`, parsed.error.issues);
     toast.error(`API contract mismatch on ${path}`);
     throw parsed.error;
   }
   return parsed.data as z.infer<S>;
 }
 
-async function put<S extends z.ZodType>(
+const post = <S extends z.ZodType>(
   path: string,
   body: unknown,
   schema: S,
   fixture: () => Promise<unknown>,
   passcode: string,
-) {
-  const data = USE_FIXTURES
-    ? await fixture()
-    : await (
-        await fetch(`${API_URL}${path}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json', [DEMO_PASSCODE_HEADER]: passcode },
-          body: JSON.stringify(body),
-        })
-      ).json();
-  const parsed = schema.safeParse(data);
-  if (!parsed.success) {
-    console.error(`Contract mismatch on PUT ${path}`, parsed.error.issues);
-    toast.error(`API contract mismatch on ${path}`);
-    throw parsed.error;
-  }
-  return parsed.data as z.infer<S>;
-}
+) => send('POST', path, body, schema, fixture, passcode);
+
+const put = <S extends z.ZodType>(
+  path: string,
+  body: unknown,
+  schema: S,
+  fixture: () => Promise<unknown>,
+  passcode: string,
+) => send('PUT', path, body, schema, fixture, passcode);
 
 // Fixtures are loaded lazily so they stay out of the production bundle.
 const fixtures = () => import('@proofvault/shared/fixtures');
@@ -125,7 +124,7 @@ export const api = {
       passcode,
     ),
 
-  // POST /disputes/:id/sandbox/:step — step is require-evidence or adjudicate
+  // POST /disputes/:id/sandbox/:step: step is require-evidence or adjudicate
   sandboxStep: (id: string, step: 'require-evidence' | 'adjudicate', passcode: string) =>
     post(
       `/disputes/${id}/sandbox/${step}`,
@@ -135,17 +134,17 @@ export const api = {
       passcode,
     ),
 
-  // POST /disputes/sync — manual poll of PayPal
+  // POST /disputes/sync: manual poll of PayPal
   syncDisputes: (passcode: string) =>
     post(
       '/disputes/sync',
       {},
-      z.object({ checked: z.number().optional() }).passthrough(),
-      async () => ({ checked: 0, fixtures: true }),
+      SyncResult,
+      async () => ({ synced: 0 }),
       passcode,
     ),
 
-  // POST /disputes/fetch {caseId} — load one PayPal case by id (sandbox list lags)
+  // POST /disputes/fetch {caseId}: load one PayPal case by id (sandbox list lags)
   fetchDispute: (caseId: string, passcode: string) =>
     post(
       '/disputes/fetch',

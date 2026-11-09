@@ -1,22 +1,148 @@
 @import 'tailwindcss';
 
-@theme {
-  --font-sans:
-    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+/*
+ * Design tokens (#46). Shell layout from the trusty-app-shell skill. Colours follow PayPal's
+ * palette (deep navy field, PayPal blue for the main action) so the dashboard reads as part of
+ * the PayPal flow, without using PayPal's logo. Components read these through the shadcn names
+ * below; never hard-code hex values in a component.
+ */
+:root {
+  --radius: 0.5rem;
+
+  /* Dark field + sidebar, one surface */
+  --shell: #001c64; /* PayPal deep navy */
+  --sidebar-item: #b4c2e0;
+  --sidebar-label: #8a9cc8;
+  --sidebar-active: #0a2d84;
+  /* Active nav text: plain white on the darker pill, no brand tint (Mike, Nov 9) */
+  --sidebar-active-fg: #ffffff;
+
+  /* Inset panel */
+  --background: #ffffff;
+  --foreground: #0f172a;
+  --canvas: #f8fafc;
+  --divider: #f1f5f9;
+
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+
+  --primary: #0070e0; /* PayPal blue */
+  --primary-foreground: #ffffff;
+  --secondary: #f1f5f9;
+  --secondary-foreground: #0f172a;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --accent: #f1f5f9;
+  --accent-foreground: #0f172a;
+  --destructive: #dc2626;
+
+  --border: #e5e7eb;
+  --input: #e2e8f0;
+  --ring: #0070e0;
+
+  /* Meaning colours: always paired with an icon or text, never colour alone */
+  --success: #047857;
+  --success-soft: #ecfdf5;
+  --warning: #b45309;
+  --warning-soft: #fffbeb;
+  --danger: #b91c1c;
+  --danger-soft: #fef2f2;
+  --info: #1d4ed8;
+  --info-soft: #eff6ff;
+
+  /* Categorical chart order, checked with the dataviz validator (light surface): never cycled */
+  --chart-1: #2563eb;
+  --chart-2: #d97706;
+  --chart-3: #7c3aed;
 }
 
-body {
-  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
+@theme inline {
+  /* System font first (apple-design skill): it already ships optical sizing and tracking tables */
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, Consolas, monospace;
+
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+
+  --color-shell: var(--shell);
+  --color-sidebar-item: var(--sidebar-item);
+  --color-sidebar-label: var(--sidebar-label);
+  --color-sidebar-active: var(--sidebar-active);
+  --color-sidebar-active-fg: var(--sidebar-active-fg);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-canvas: var(--canvas);
+  --color-divider: var(--divider);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
 }
 
-::selection {
-  background: rgb(191 219 254);
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-shell font-sans text-foreground;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  a {
+    cursor: pointer;
+  }
+  ::selection {
+    background: #bfdbfe;
+  }
 }
 
-:focus-visible {
-  outline: 2px solid rgb(37 99 235);
-  outline-offset: 2px;
-  border-radius: 4px;
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

@@ -1,79 +1,61 @@
-import { lazy, Suspense } from 'react';
-import { BrowserRouter, Link, NavLink, Route, Routes } from 'react-router-dom';
-import { ShieldCheck } from 'lucide-react';
+import { lazy, Suspense, type ReactNode } from 'react';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { AppShell, Page } from './components/AppShell';
+import { Skeleton } from './components/ui/skeleton';
 import { DisputesPage } from './pages/DisputesPage';
 import { DisputeDetailPage } from './pages/DisputeDetailPage';
 import { RulesPage } from './pages/RulesPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { PasscodeProvider } from './lib/passcode';
 
-// Bryntum + AG Studio are heavy — keep them out of the main bundle.
+// Bryntum + AG Studio are heavy: keep them out of the main bundle.
 const TriagePage = lazy(() => import('./pages/TriagePage').then((m) => ({ default: m.TriagePage })));
 const StudioPage = lazy(() => import('./pages/StudioPage').then((m) => ({ default: m.StudioPage })));
+
+function Lazy({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <Suspense
+      fallback={
+        <Page>
+          <p className="sr-only">{label}</p>
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="mt-6 h-96 w-full rounded-xl" />
+        </Page>
+      }
+    >
+      {children}
+    </Suspense>
+  );
+}
 
 export function App() {
   return (
     <BrowserRouter>
       <PasscodeProvider>
-        <div className="min-h-screen bg-neutral-50 font-sans text-neutral-900">
-          <header className="border-b bg-white">
-            <div className="mx-auto flex max-w-5xl items-center gap-4 px-6 py-4">
-              <ShieldCheck className="size-5 text-blue-600" />
-              <Link to="/" className="text-lg font-semibold">
-                ProofVault
-              </Link>
-              <span className="text-sm text-neutral-500">Seller dashboard</span>
-              <nav className="ml-auto flex items-center gap-1 rounded-lg bg-neutral-100 p-1 text-sm">
-                {[
-                  { to: '/', label: 'Disputes', end: true },
-                  { to: '/rules', label: 'Rules', end: false },
-                  { to: '/analytics', label: 'Analytics', end: false },
-                  { to: '/studio', label: 'Studio', end: false },
-                  { to: '/triage', label: 'Triage', end: false },
-                ].map((n) => (
-                  <NavLink
-                    key={n.to}
-                    to={n.to}
-                    end={n.end}
-                    className={({ isActive }) =>
-                      `rounded-md px-3 py-1.5 transition-colors ${
-                        isActive
-                          ? 'bg-white font-medium text-neutral-900 shadow-sm'
-                          : 'text-neutral-600 hover:text-neutral-900'
-                      }`
-                    }
-                  >
-                    {n.label}
-                  </NavLink>
-                ))}
-              </nav>
-            </div>
-          </header>
-          <main className="mx-auto max-w-5xl px-6 py-6">
-            <Routes>
-              <Route path="/" element={<DisputesPage />} />
-              <Route path="/disputes/:id" element={<DisputeDetailPage />} />
-              <Route path="/rules" element={<RulesPage />} />
-              <Route path="/analytics" element={<AnalyticsPage />} />
-              <Route
-                path="/studio"
-                element={
-                  <Suspense fallback={<p className="text-sm text-neutral-500">Loading Studio…</p>}>
-                    <StudioPage />
-                  </Suspense>
-                }
-              />
-              <Route
-                path="/triage"
-                element={
-                  <Suspense fallback={<p className="text-sm text-neutral-500">Loading triage board…</p>}>
-                    <TriagePage />
-                  </Suspense>
-                }
-              />
-            </Routes>
-          </main>
-        </div>
+        <AppShell>
+          <Routes>
+            <Route path="/" element={<DisputesPage />} />
+            <Route path="/disputes/:id" element={<DisputeDetailPage />} />
+            <Route path="/rules" element={<RulesPage />} />
+            <Route path="/analytics" element={<AnalyticsPage />} />
+            <Route
+              path="/studio"
+              element={
+                <Lazy label="Loading Studio">
+                  <StudioPage />
+                </Lazy>
+              }
+            />
+            <Route
+              path="/triage"
+              element={
+                <Lazy label="Loading triage board">
+                  <TriagePage />
+                </Lazy>
+              }
+            />
+          </Routes>
+        </AppShell>
       </PasscodeProvider>
     </BrowserRouter>
   );

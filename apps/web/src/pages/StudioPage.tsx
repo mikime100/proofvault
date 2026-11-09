@@ -70,11 +70,12 @@ export function StudioPage() {
   }, [disputes.data]);
 
   if (disputes.isPending)
-    return <p className="text-sm text-neutral-500">Loading dispute data…</p>;
+    return <p className="p-8 text-sm text-muted-foreground">Loading dispute data…</p>;
 
+  // Fills the panel below the topbar (64px topbar + the panel's inset margins).
   return (
-    <section className="-mx-6 -my-6">
-      <div className="h-[calc(100vh-8rem)]">
+    <section aria-label="AG Studio" className="h-[calc(100dvh-5rem)] overflow-x-auto lg:h-[calc(100dvh-5.5rem)]">
+      <div className="h-full min-w-[640px]">
         <AgStudio
           data={data}
           mode="edit"

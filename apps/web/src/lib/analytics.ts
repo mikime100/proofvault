@@ -6,7 +6,7 @@ export interface ReasonStat {
   label: string;
   total: number;
   resolved: number;
-  /** Resolved without conceding (decision was not 'accept'). */
+  /** Resolved with our recorded outcome 'won'. */
   won: number;
   winRate: number | null;
   amountAtRisk: number;
@@ -27,8 +27,8 @@ export interface AnalyticsSummary {
 const money = (items: DisputeListItem[]) =>
   items.reduce((s, d) => s + (d.amount.currency === 'USD' ? Number(d.amount.value) : 0), 0);
 
-const isWon = (d: DisputeListItem) =>
-  d.status === 'RESOLVED' && d.decision !== 'accept';
+/** Won = our recorded outcome says so (a case refunded by a click is resolved, but not won). */
+const isWon = (d: DisputeListItem) => d.outcome === 'won';
 
 export function summarize(items: DisputeListItem[]): AnalyticsSummary {
   const resolved = items.filter((d) => d.status === 'RESOLVED');

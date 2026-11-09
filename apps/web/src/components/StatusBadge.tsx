@@ -1,18 +1,17 @@
 import { statusLabel } from '../lib/format';
-import { cn } from '../lib/utils';
+import { Badge } from './ui/badge';
 
-const STYLES: [RegExp, string][] = [
-  [/RESOLVED/, 'bg-emerald-100 text-emerald-800'],
-  [/WAITING_FOR_SELLER/, 'bg-amber-100 text-amber-800'],
-  [/WAITING_FOR_BUYER/, 'bg-sky-100 text-sky-800'],
-  [/UNDER_REVIEW|OPEN/, 'bg-violet-100 text-violet-800'],
-];
+type Variant = 'success' | 'warning' | 'muted';
 
+const VARIANT: Record<string, Variant> = {
+  RESOLVED: 'success',
+  WAITING_FOR_SELLER_RESPONSE: 'warning',
+  WAITING_FOR_BUYER_RESPONSE: 'muted',
+  UNDER_REVIEW: 'muted',
+  OPEN: 'muted',
+};
+
+/** PayPal status as a text chip. The words carry the meaning; colour only backs them up. */
 export function StatusBadge({ status }: { status: string }) {
-  const style = STYLES.find(([re]) => re.test(status))?.[1] ?? 'bg-neutral-100 text-neutral-600';
-  return (
-    <span className={cn('inline-block rounded-full px-2 py-0.5 text-xs font-medium', style)}>
-      {statusLabel(status)}
-    </span>
-  );
+  return <Badge variant={VARIANT[status] ?? 'muted'}>{statusLabel(status)}</Badge>;
 }
