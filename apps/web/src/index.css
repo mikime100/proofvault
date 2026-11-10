@@ -147,3 +147,16 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* AG Studio: when the window is too narrow for every panel at its set width, Studio squeezes the
+   panels but keeps their content at full width, so the content is cut off on one side. Letting the
+   content column shrink keeps it inside the panel. */
+.ag-studio-root .ag-studio-panel-left {
+  grid-template-columns: minmax(0, var(--ag-studio-panel-width)) var(--ag-studio-panel-divider-width);
+}
+.ag-studio-root .ag-studio-panel-right {
+  grid-template-columns: var(--ag-studio-panel-divider-width) minmax(0, var(--ag-studio-panel-width));
+}
+.ag-studio-root .ag-studio-panel-content {
+  max-width: 100%;
+}
