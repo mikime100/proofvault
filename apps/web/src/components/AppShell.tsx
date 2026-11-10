@@ -11,7 +11,6 @@ import {
   Menu,
   RefreshCw,
   Search,
-  ShieldCheck,
   SlidersHorizontal,
   Sparkles,
   Inbox,
@@ -64,8 +63,9 @@ const NAV: { heading: string; items: NavItem[] }[] = [
 function Brand() {
   return (
     <div className="flex h-16 items-center gap-3 px-5">
-      <div className="flex size-9 items-center justify-center rounded-lg bg-primary">
-        <ShieldCheck className="size-5 text-white" aria-hidden />
+      {/* White tile: the logo's navy parts would vanish against the navy sidebar. */}
+      <div className="flex size-9 items-center justify-center rounded-lg bg-white p-1">
+        <img src="/logo.png" alt="" width={28} height={28} className="size-full object-contain" />
       </div>
       <span className="text-xl font-semibold tracking-tight text-white">ProofVault</span>
     </div>

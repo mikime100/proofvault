@@ -1,3 +1,5 @@
+<img src="apps/web/public/logo.png" alt="ProofVault logo" width="96" />
+
 # ProofVault: AI Dispute Defense for Digital Sellers
 
 Sellers of digital products lose PayPal disputes because a download has no tracking number.

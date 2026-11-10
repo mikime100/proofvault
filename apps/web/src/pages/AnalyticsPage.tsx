@@ -19,11 +19,11 @@ import { cn } from '../lib/utils';
 const pct = (v: number | null) => (v === null ? '-' : `${Math.round(v * 100)}%`);
 const usd = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-// Fixed categorical order (index.css --chart-1..3), validated for colour-blind separation.
+// Outcome colours from index.css: a single brand-blue family, told apart by lightness.
 const chartConfig = {
-  won: { label: 'Won', color: 'var(--chart-1)' },
-  lost: { label: 'Lost or refunded', color: 'var(--chart-2)' },
-  open: { label: 'Still open', color: 'var(--chart-3)' },
+  won: { label: 'Won', color: 'var(--chart-won)' },
+  lost: { label: 'Lost or refunded', color: 'var(--chart-lost)' },
+  open: { label: 'Still open', color: 'var(--chart-open)' },
 } satisfies ChartConfig;
 
 export function AnalyticsPage() {
@@ -95,8 +95,9 @@ export function AnalyticsPage() {
                 axisLine={false}
                 fontSize={12}
               />
-              <ChartTooltip cursor={{ fill: 'var(--canvas)' }} content={<ChartTooltipContent />} />
-              <ChartLegend content={<ChartLegendContent />} />
+              {/* Recharts sorts tooltip and legend items by name; keep them in bar order instead. */}
+              <ChartTooltip cursor={{ fill: 'var(--canvas)' }} content={<ChartTooltipContent />} itemSorter={() => 0} />
+              <ChartLegend content={<ChartLegendContent />} itemSorter={null} />
               <Bar dataKey="won" stackId="a" fill="var(--color-won)" stroke="var(--background)" strokeWidth={2} />
               <Bar dataKey="lost" stackId="a" fill="var(--color-lost)" stroke="var(--background)" strokeWidth={2} />
               <Bar

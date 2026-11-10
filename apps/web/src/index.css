@@ -52,10 +52,11 @@
   --info: #1d4ed8;
   --info-soft: #eff6ff;
 
-  /* Categorical chart order, checked with the dataviz validator (light surface): never cycled */
-  --chart-1: #2563eb;
-  --chart-2: #d97706;
-  --chart-3: #7c3aed;
+  /* Outcome chart: one blue family taken from the brand, told apart by lightness.
+     Won is the brand blue, lost is the shell navy, still open is a pale blue that recedes. */
+  --chart-won: #0070e0;
+  --chart-lost: #001c64;
+  --chart-open: #b6cdf0;
 }
 
 @theme inline {
@@ -105,9 +106,9 @@
   --color-info: var(--info);
   --color-info-soft: var(--info-soft);
 
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
+  --color-chart-won: var(--chart-won);
+  --color-chart-lost: var(--chart-lost);
+  --color-chart-open: var(--chart-open);
 }
 
 @layer base {

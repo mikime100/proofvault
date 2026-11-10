@@ -11,6 +11,7 @@ import { api } from '../api';
 import { summarize } from '../lib/analytics';
 import { reasonLabel } from '../lib/format';
 import { proofvaultLlm } from '../lib/studioLlm';
+import { proofvaultStudioTheme } from '../lib/studioTheme';
 
 // The AI Assistant panel's component lives in this module; without it Studio drops the panel.
 AgStudioModuleRegistry.registerModules([AgStudioAiModule]);
@@ -78,6 +79,7 @@ export function StudioPage() {
       <div className="h-full min-w-[640px]">
         <AgStudio
           data={data}
+          theme={proofvaultStudioTheme}
           mode="edit"
           ai={({ api: coreApi }) =>
             createAiHarness(coreApi as AgStudioApi, { adapter: proofvaultLlm, primary: 'lead' })
