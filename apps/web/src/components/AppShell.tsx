@@ -63,10 +63,8 @@ const NAV: { heading: string; items: NavItem[] }[] = [
 function Brand() {
   return (
     <div className="flex h-16 items-center gap-3 px-5">
-      {/* White tile: the logo's navy parts would vanish against the navy sidebar. */}
-      <div className="flex size-9 items-center justify-center rounded-lg bg-white p-1">
-        <img src="/logo.png" alt="" width={28} height={28} className="size-full object-contain" />
-      </div>
+      {/* The white version of the logo, made for the navy sidebar. */}
+      <img src="/logo-white.png" alt="" width={36} height={36} className="size-9 shrink-0 object-contain" />
       <span className="text-xl font-semibold tracking-tight text-white">ProofVault</span>
     </div>
   );
