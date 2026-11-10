@@ -1,6 +1,6 @@
 // Evidence, timeline, activity and sandbox panels for the dispute page.
 import { useEffect, useMemo, useRef } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { ChevronRight, RefreshCw } from 'lucide-react';
 import type { ActionLogEntry, AllowedAction, DisputeDetail, PipelineFlag, TimelineEntry } from '@proofvault/shared';
 import { actionLabel } from '../../lib/caseStatus';
 import { plainDetail } from '../../lib/errors';
@@ -10,15 +10,6 @@ import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 
 type Analysis = NonNullable<DisputeDetail['analysis']>;
-
-const ENTRY_LABEL: Record<string, string> = {
-  purchase: 'Purchase',
-  login: 'Login',
-  lesson_view: 'Lesson viewed',
-  download: 'Download',
-  activation: 'Activation',
-  dispute_opened: 'Dispute opened',
-};
 
 const FLAG_MESSAGES: Record<PipelineFlag, string> = {
   no_matching_order: 'No matching order: this dispute is for a purchase we have no record of.',
@@ -154,42 +145,70 @@ export function Claims({
     () => new Map(analysis.timeline.entries.map((e) => [e.recordId, e])),
     [analysis.timeline.entries],
   );
+  const recordCount = new Set(analysis.accepted.flatMap((c) => c.recordIds)).size;
+  // A claim's records in time order, so each list reads top to bottom like the timeline.
+  const recordsOf = (ids: string[]) =>
+    ids
+      .map((rid) => ({ rid, e: entryById.get(rid) }))
+      .sort((a, b) => (a.e?.at ?? '').localeCompare(b.e?.at ?? ''));
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <Flags flags={analysis.flags} />
       <div>
-        <h3 className="text-sm font-semibold">Claims sent to PayPal</h3>
+        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+          <h3 className="text-sm font-semibold">Claims sent to PayPal</h3>
+          {analysis.accepted.length > 0 && (
+            <p className="tabular text-sm text-muted-foreground">
+              {analysis.accepted.length} claims · {recordCount} records
+            </p>
+          )}
+        </div>
         <p className="mt-0.5 text-sm text-muted-foreground">
           Every claim cites a real record from this order. Click a record to see it in the timeline.
         </p>
         {analysis.accepted.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">No claims passed the check.</p>
         ) : (
-          <ul className="mt-2 divide-y divide-divider">
-            {analysis.accepted.map((c) => (
-              <li key={c.text} className="py-3">
-                <p className="flex items-start gap-2 text-sm">
-                  <span className="min-w-0 [overflow-wrap:anywhere]">{c.text}</span>
-                </p>
-                <div className="mt-2.5 flex flex-wrap gap-1.5 pl-6">
-                  {c.recordIds.map((rid) => {
-                    const e = entryById.get(rid);
-                    return (
-                      <button
-                        key={rid}
-                        type="button"
-                        onClick={() => onShowRecord(rid)}
-                        title={rid}
-                        className="inline-flex min-h-7 items-center gap-1 rounded-md border bg-canvas px-2 py-0.5 font-mono text-[11px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
-                      >
-                        {e ? `${ENTRY_LABEL[e.type] ?? e.type} · ${fmtDateTime(e.at)}` : rid}
-                      </button>
-                    );
-                  })}
+          <ol className="mt-4 space-y-3">
+            {analysis.accepted.map((c, i) => (
+              <li key={c.text} className="rounded-lg border p-4">
+                <div className="flex gap-3">
+                  <span className="tabular flex size-6 shrink-0 items-center justify-center rounded-full bg-canvas text-xs font-medium text-muted-foreground">
+                    {i + 1}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="pt-0.5 text-sm font-medium leading-snug [overflow-wrap:anywhere]">{c.text}</p>
+                    <ul className="mt-3 divide-y overflow-hidden rounded-md border bg-canvas/60">
+                      {recordsOf(c.recordIds).map(({ rid, e }) => (
+                        <li key={rid}>
+                          <button
+                            type="button"
+                            onClick={() => onShowRecord(rid)}
+                            title="Show in the timeline"
+                            className="group flex w-full items-center gap-3 px-3 py-2 text-left text-sm transition-colors hover:bg-card focus-visible:bg-card focus-visible:outline-none"
+                          >
+                            <span className="min-w-0 flex-1 truncate">
+                              {e ? e.summary : <span className="font-mono text-xs">{rid}</span>}
+                            </span>
+                            {e && (
+                              <time dateTime={e.at} className="tabular shrink-0 text-xs text-muted-foreground">
+                                {fmtDateTime(e.at)}
+                              </time>
+                            )}
+                            <ChevronRight
+                              className="size-4 shrink-0 text-muted-foreground/50 transition-colors group-hover:text-foreground"
+                              aria-hidden
+                            />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
               </li>
             ))}
-          </ul>
+          </ol>
         )}
       </div>
 
