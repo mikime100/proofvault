@@ -1,51 +1,49 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ProofVault } from '@proofvault/sdk';
-import { CaptureOrderResponse } from '@proofvault/shared';
-import { DEMO_PRODUCT } from '@proofvault/shared/fixtures';
-import { ShieldCheck, Play, Download } from 'lucide-react';
+import { CoursePlayer } from './components/CoursePlayer';
+import { ProductPage } from './components/ProductPage';
+import { COURSE, STORE_NAME, type Lesson } from './lib/course';
+import { API_URL } from './lib/paypal';
 
-type View = 'course' | 'paying' | 'lessons';
-
-// Minimal types for the PayPal JS SDK (v5) Buttons API we use. The SDK is loaded
-// from the CDN and does not ship types with this setup.
-interface PayPalOrderActions {
-  order: {
-    create(options: {
-      purchase_units: { amount: { value: string; currency_code: string } }[];
-    }): Promise<string>;
-  };
-}
-interface PayPalButtonOptions {
-  createOrder: (_data: unknown, actions: PayPalOrderActions) => Promise<string>;
-  onApprove: (data: { orderID: string }) => Promise<void>;
-  onError: (err: unknown) => void;
-}
-interface PayPalSDK {
-  Buttons(options: PayPalButtonOptions): { render(selector: string): Promise<void> };
-}
-
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3333';
 const TOKEN_KEY = 'pv_access_token';
 const LOGIN_KEY = 'pv_login_fired';
-const paypal = () => (window as { paypal?: PayPalSDK }).paypal;
 
 function tokenFromUrl(): string | null {
   return new URLSearchParams(window.location.search).get('t');
 }
 
-export function App() {
-  const [view, setView] = useState<View>(() =>
-    tokenFromUrl() || localStorage.getItem(TOKEN_KEY) ? 'lessons' : 'course',
+function Header({ owned }: { owned: boolean }) {
+  return (
+    <header className="sticky top-0 z-10 border-b bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
+        <a href="/" className="flex items-center gap-2.5">
+          <span className="flex size-8 items-center justify-center rounded-lg bg-foreground text-sm font-semibold text-white">
+            L
+          </span>
+          <span className="text-[15px] font-semibold tracking-[-0.01em]">{STORE_NAME}</span>
+        </a>
+        <p className="text-sm text-muted-foreground">{owned ? 'Your course' : `${COURSE.lessons.length}-lesson mini course`}</p>
+      </div>
+    </header>
   );
+}
+
+function Footer() {
+  return (
+    <footer className="mt-16 border-t">
+      <div className="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-6 text-xs text-muted-foreground sm:flex-row sm:justify-between sm:px-6">
+        <p>© 2026 {STORE_NAME}</p>
+        <p>Payments by PayPal. Demo store running on the PayPal sandbox; no real money moves.</p>
+      </div>
+    </footer>
+  );
+}
+
+export function App() {
+  // A saved access token always wins: a buyer who has paid never sees checkout again.
   const [accessToken, setAccessToken] = useState<string | null>(
     () => tokenFromUrl() ?? localStorage.getItem(TOKEN_KEY),
   );
-  const [error, setError] = useState<string | null>(null);
-  const [paypalSdkLoaded, setPaypalSdkLoaded] = useState(false);
-  const [openLesson, setOpenLesson] = useState<number | null>(null);
-  const [paypalSdkFailed, setPaypalSdkFailed] = useState(false);
-  const buttonsRendered = useRef(false);
-  const paypalContainer = useRef<HTMLDivElement>(null);
 
   // A ?t=<token> link is the buyer's private access link: keep it and remember it.
   useEffect(() => {
@@ -53,7 +51,6 @@ export function App() {
     if (t) {
       localStorage.setItem(TOKEN_KEY, t);
       setAccessToken(t);
-      setView('lessons');
     }
   }, []);
 
@@ -67,212 +64,32 @@ export function App() {
     }
   }, [accessToken]);
 
-  const track = useCallback(
-    (type: 'login' | 'lesson_view' | 'download' | 'activation', meta?: Record<string, string>) => {
-      void ProofVault.track(type, meta);
-    },
-    [],
-  );
-
-  // Load PayPal JS SDK (v5) from CDN.
-  useEffect(() => {
-    const clientId = import.meta.env.VITE_PAYPAL_CLIENT_ID;
-    if (!clientId || paypal()) {
-      setPaypalSdkLoaded(true);
-      return;
-    }
-    const script = document.createElement('script');
-    script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&currency=USD&intent=capture`;
-    script.async = true;
-    script.onload = () => setPaypalSdkLoaded(true);
-    script.onerror = () => {
-      setPaypalSdkLoaded(true);
-      setPaypalSdkFailed(true);
-    };
-    document.body.appendChild(script);
-    return () => {
-      document.body.removeChild(script);
-    };
+  const onPaid = useCallback((token: string) => {
+    localStorage.setItem(TOKEN_KEY, token);
+    window.history.replaceState(null, '', `/learn?t=${token}`);
+    window.scrollTo({ top: 0 });
+    setAccessToken(token);
   }, []);
 
-  const createOrder = () => {
-    setError(null);
-    buttonsRendered.current = false;
-    setView('paying');
-  };
+  const onLessonOpen = useCallback((l: Lesson) => {
+    void ProofVault.track('lesson_view', { lesson: String(l.n) });
+  }, []);
 
-  // Render PayPal buttons when entering the paying view.
-  useEffect(() => {
-    if (view !== 'paying') {
-      buttonsRendered.current = false;
-      return;
-    }
-    if (!paypalSdkLoaded) return;
-    if (paypalSdkFailed || !paypal()) {
-      setError('PayPal checkout is unavailable right now');
-      setView('course');
-      return;
-    }
-    if (buttonsRendered.current || !paypalContainer.current) return;
+  const onDownload = useCallback(() => {
+    void ProofVault.track('download', { file: COURSE.bonus.file });
+  }, []);
 
-    paypal()!.Buttons({
-      // Our api creates the order row AND the PayPal order server-side and
-      // returns the PayPal order id; the SDK just needs that id to render checkout.
-      createOrder: async () => {
-        const res = await fetch(`${API_URL}/store/orders`, { method: 'POST' });
-        if (!res.ok) throw new Error('Could not create order');
-        const { paypalOrderId } = (await res.json()) as { paypalOrderId?: string };
-        if (!paypalOrderId) throw new Error('Order creation returned no id');
-        return paypalOrderId;
-      },
-      onApprove: async (data) => {
-        try {
-          const res = await fetch(`${API_URL}/store/orders/${data.orderID}/capture`, {
-            method: 'POST',
-          });
-          if (!res.ok) throw new Error('Failed to capture order');
-          const captureData = CaptureOrderResponse.parse(await res.json());
-          const token = captureData.accessToken;
-          localStorage.setItem(TOKEN_KEY, token);
-          window.history.replaceState(null, '', `/learn?t=${token}`);
-          setAccessToken(token);
-          setView('lessons');
-        } catch (e) {
-          setError(e instanceof Error ? e.message : 'Capture failed');
-          setView('course');
-        }
-      },
-      onError: (err) => {
-        setError(err instanceof Error ? err.message : 'PayPal checkout failed');
-        setView('course');
-      },
-    }).render('#paypal-button-container').catch(() => {
-      setError('PayPal checkout is unavailable right now');
-      setView('course');
-    });
-
-    buttonsRendered.current = true;
-  }, [view, paypalSdkLoaded, paypalSdkFailed]);
-
-  // A saved access token always wins: an unlocked buyer never sees checkout again.
-  if (!accessToken && view === 'course') {
-    return (
-      <main className="mx-auto max-w-xl p-8 font-sans">
-        <div className="mb-8">
-          <ShieldCheck className="size-6 text-blue-600" />
-          <h1 className="text-2xl font-semibold">{DEMO_PRODUCT.name}</h1>
-          <p className="mt-2 text-lg">${DEMO_PRODUCT.price.value}</p>
-        </div>
-
-        <div className="rounded border border-dashed p-6 text-center">
-          <p className="text-sm text-neutral-500 mb-4">
-            Secure checkout via PayPal sandbox. Your access will be logged to protect against payment fraud.
-          </p>
-          <button
-            onClick={createOrder}
-            className="w-full py-3 px-4 bg-blue-600 text-white rounded font-medium hover:bg-blue-700"
-          >
-            Pay with PayPal
-          </button>
-          {error && (
-            <p className="mt-3 text-sm text-red-600">{error}</p>
-          )}
-        </div>
-
-        <p className="mt-4 text-xs text-neutral-500">
-          Access to this course is logged (time, IP, device) to protect against payment fraud.
-        </p>
-      </main>
-    );
-  }
-
-  if (!accessToken && view === 'paying') {
-    return (
-      <main className="mx-auto max-w-xl p-8 font-sans">
-        <h1 className="text-2xl font-semibold">Processing payment…</h1>
-        <p className="mt-2 text-sm text-neutral-500">Complete the PayPal checkout to unlock your lessons.</p>
-        <div id="paypal-button-container" ref={paypalContainer} className="mt-6" />
-        {error && (
-          <p className="mt-3 text-sm text-red-600">{error}</p>
+  return (
+    <div className="flex min-h-dvh flex-col">
+      <Header owned={!!accessToken} />
+      <main className="flex-1">
+        {accessToken ? (
+          <CoursePlayer accessToken={accessToken} onLessonOpen={onLessonOpen} onDownload={onDownload} />
+        ) : (
+          <ProductPage onPaid={onPaid} />
         )}
       </main>
-    );
-  }
-
-  // Lessons view - after successful payment
-  return (
-    <main className="mx-auto max-w-2xl p-8 font-sans">
-      <div className="mb-6 flex items-center gap-2">
-        <ShieldCheck className="size-5 text-green-600" />
-        <h1 className="text-2xl font-semibold">Course unlocked</h1>
-      </div>
-      <p className="mb-6 text-sm text-neutral-500">
-        Your access is being tracked (time, IP, device) as proof of purchase.
-      </p>
-
-      <div className="mb-6 rounded border border-green-200 bg-green-50 p-4">
-        <h2 className="text-sm font-semibold text-green-900">Your private course link</h2>
-        <p className="mt-1 break-all font-mono text-xs text-green-800">
-          {window.location.origin}/learn?t={accessToken}
-        </p>
-        <p className="mt-1 text-xs text-green-800">
-          Bookmark it — anyone with this link can open your course.
-        </p>
-      </div>
-
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold border-b pb-2">Lessons</h2>
-        {[1, 2, 3, 4].map((lesson) => (
-          <div key={lesson} className="rounded border bg-white">
-            <div className="flex justify-between items-center p-4">
-              <div>
-                <h3 className="font-medium">Lesson {lesson}</h3>
-                <p className="text-sm text-neutral-500">Video lesson {lesson} of 4</p>
-              </div>
-              <button
-                onClick={() => {
-                  const opening = openLesson !== lesson;
-                  setOpenLesson(opening ? lesson : null);
-                  if (opening) track('lesson_view', { lesson: String(lesson) });
-                }}
-                className="flex items-center gap-2 py-2 px-3 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
-              >
-                <Play size={16} /> {openLesson === lesson ? 'Close' : `View lesson ${lesson}`}
-              </button>
-            </div>
-            {openLesson === lesson && (
-              <div className="border-t bg-neutral-900">
-                <div className="flex aspect-video items-center justify-center">
-                  <div className="text-center">
-                    <Play size={48} className="mx-auto text-white/70" />
-                    <p className="mt-3 text-sm text-neutral-300">
-                      Lesson {lesson} — ProofVault course video
-                    </p>
-                    <p className="mt-1 text-xs text-neutral-500">
-                      Demo placeholder — the real course video streams here
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-8 p-4 rounded border bg-amber-50">
-        <div className="flex items-center gap-3 mb-3">
-          <Download size={20} className="text-amber-600" />
-          <h3 className="font-medium">Bonus PDF</h3>
-        </div>
-        <a
-          href="/bonus.pdf"
-          download="bonus.pdf"
-          onClick={() => track('download', { file: 'bonus.pdf' })}
-          className="block w-full py-3 px-4 bg-amber-600 text-white rounded font-medium text-center hover:bg-amber-700"
-        >
-          Download bonus.pdf
-        </a>
-      </div>
-    </main>
+      <Footer />
+    </div>
   );
 }
