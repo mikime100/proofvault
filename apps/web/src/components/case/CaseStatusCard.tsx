@@ -11,6 +11,8 @@ import { DecisionBadge } from '../DecisionBadge';
 import { StatusBadge } from '../StatusBadge';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import {
   AlertDialog,
@@ -164,17 +166,28 @@ export function CaseStatusCard({
   /** Last refused write, kept on screen until the next attempt. */
   failure: Failure | null;
   onDismissFailure: () => void;
-  onAction: (type: SellerAction) => void;
+  /** amount is set only for an offer, as the seller edited it in the confirm dialog. */
+  onAction: (type: SellerAction, amount?: string) => void;
   onRefresh: () => void;
 }) {
   const { dispute, analysis, allowedActions } = detail;
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
+  const [offer, setOffer] = useState('');
   const resolved = dispute.status === 'RESOLVED';
   const outcome = dispute.outcome;
   const due = !resolved && dispute.responseDueAt ? hoursUntil(dispute.responseDueAt) : null;
   const money = `${dispute.amount.value} ${dispute.amount.currency}`;
+  // The offer must be a positive amount with cents, below the full disputed amount (that would be a refund).
+  const offerError = !/^\d+(\.\d{1,2})?$/.test(offer.trim())
+    ? 'Enter an amount like 24.50.'
+    : Number(offer) <= 0
+      ? 'The offer must be more than 0.'
+      : Number(offer) >= Number(dispute.amount.value)
+        ? `The offer must be less than ${money}. To give it all back, use Accept claim.`
+        : null;
 
   const click = (type: SellerAction) => {
+    if (type === 'offer') setOffer(offerAmount ?? '');
     if (type === 'offer' || type === 'accept') setConfirm({ type });
     else onAction(type);
   };
@@ -309,11 +322,29 @@ export function CaseStatusCard({
                     cannot be undone.
                   </p>
                 ) : (
-                  <p>
-                    PayPal sends the buyer a partial refund offer
-                    {offerAmount ? ` of ${offerAmount} ${dispute.amount.currency}` : ''} (your offer percentage in Agent
-                    rules). If they accept, the case closes with that refund.
-                  </p>
+                  <>
+                    <p>
+                      PayPal sends the buyer a partial refund offer. If they accept, the case closes with that refund.
+                      The amount starts at your offer percentage in Agent rules.
+                    </p>
+                    <div className="space-y-1.5 pt-1">
+                      <Label htmlFor="offer-amount" className="text-foreground">
+                        Offer amount ({dispute.amount.currency})
+                      </Label>
+                      <Input
+                        id="offer-amount"
+                        inputMode="decimal"
+                        value={offer}
+                        onChange={(e) => setOffer(e.target.value)}
+                        aria-invalid={offerError !== null}
+                        aria-describedby="offer-amount-hint"
+                        className="tabular max-w-40 text-foreground"
+                      />
+                      <p id="offer-amount-hint" className={cn('text-xs', offerError && 'text-danger')}>
+                        {offerError ?? `Out of ${money} disputed.`}
+                      </p>
+                    </div>
+                  </>
                 )}
                 {dispute.paypalDisputeId.startsWith('PP-R-') && (
                   <p className="font-medium text-danger">
@@ -327,9 +358,16 @@ export function CaseStatusCard({
             <AlertDialogCancel>Keep fighting</AlertDialogCancel>
             <AlertDialogAction
               className={cn(confirm?.type === 'accept' && 'bg-danger text-white hover:bg-danger/90')}
-              onClick={() => confirm && onAction(confirm.type)}
+              disabled={confirm?.type === 'offer' && offerError !== null}
+              onClick={() =>
+                confirm && onAction(confirm.type, confirm.type === 'offer' ? Number(offer).toFixed(2) : undefined)
+              }
             >
-              {confirm?.type === 'accept' ? 'Refund buyer' : 'Send offer'}
+              {confirm?.type === 'accept'
+                ? 'Refund buyer'
+                : offerError
+                  ? 'Send offer'
+                  : `Send offer of ${Number(offer).toFixed(2)} ${dispute.amount.currency}`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

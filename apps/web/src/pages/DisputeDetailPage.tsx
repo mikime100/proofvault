@@ -93,14 +93,15 @@ export function DisputeDetailPage() {
   };
 
   const act = useMutation({
-    mutationFn: async (type: SellerAction) => {
+    mutationFn: async ({ type, amount }: { type: SellerAction; amount?: string }) => {
       setFailure(null);
       const pc = await passcode.require();
       if (!pc) throw new Error(CANCELLED);
-      return api.disputeAction(id, type, pc);
+      const money = amount && detail.data ? { value: amount, currency: detail.data.dispute.amount.currency } : undefined;
+      return api.disputeAction(id, type, pc, money);
     },
-    onSuccess: (entry, type) => afterWrite(entry, `Could not ${ACTION_WORD[type]}`),
-    onError: (e, type) => setFailure(reportError(e, ACTION_WORD[type], passcode.forget)),
+    onSuccess: (entry, { type }) => afterWrite(entry, `Could not ${ACTION_WORD[type]}`),
+    onError: (e, { type }) => setFailure(reportError(e, ACTION_WORD[type], passcode.forget)),
   });
 
   const sandbox = useMutation({
@@ -153,12 +154,12 @@ export function DisputeDetailPage() {
           status={status}
           now={now}
           checkedAt={detail.dataUpdatedAt}
-          busy={act.isPending ? (act.variables ?? null) : null}
+          busy={act.isPending ? (act.variables?.type ?? null) : null}
           refreshing={detail.isFetching}
           offerAmount={offerAmount}
           failure={failure}
           onDismissFailure={() => setFailure(null)}
-          onAction={(t) => act.mutate(t)}
+          onAction={(type, amount) => act.mutate({ type, amount })}
           onRefresh={() => {
             void detail.refetch();
             void qc.invalidateQueries({ queryKey: ['disputes'] });

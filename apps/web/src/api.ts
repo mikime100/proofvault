@@ -115,10 +115,16 @@ export const api = {
     get(`/disputes/${id}`, DisputeDetail, async () => (await fixtures()).disputeDetailFixtures[id]),
 
   // POST /disputes/:id/actions {type: submit | offer | accept | escalate}
-  disputeAction: (id: string, type: 'submit' | 'offer' | 'accept' | 'escalate', passcode: string) =>
+  // amount only for an offer; without it the api offers the seller's offerPercent.
+  disputeAction: (
+    id: string,
+    type: 'submit' | 'offer' | 'accept' | 'escalate',
+    passcode: string,
+    amount?: { value: string; currency: string },
+  ) =>
     post(
       `/disputes/${id}/actions`,
-      { type },
+      amount && type === 'offer' ? { type, amount } : { type },
       ActionLogEntry,
       () => okAction(id, type, `Seller ${type} from dashboard`),
       passcode,
