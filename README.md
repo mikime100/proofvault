@@ -22,7 +22,7 @@ Everything runs on the PayPal **sandbox**. No real money moves.
 
 1. Buy the course in the store with a PayPal sandbox **buyer** account, then open a few lessons.
 2. Log in to sandbox PayPal as that buyer and open a dispute on the payment ("item not received").
-3. Within a few minutes (PayPal's sandbox list lags new cases) the case shows up in the dashboard with its evidence, score and the
+3. PayPal's webhook tells us at once, and within about a minute the case shows up in the dashboard with its evidence, score and the
    agent's decision. A strong case is answered automatically.
 
 The dashboard is read-only for visitors. Anything that changes a case (submit, offer, refund,
@@ -194,8 +194,8 @@ Using an AI coding agent? Prisma refuses to run `db:reset` for an agent without 
 
 - The store logs a "login" the moment checkout finishes, so a buyer who pays and never comes back
   still shows one access. A real store would log it on the buyer's first visit instead.
-- Dispute webhooks need registering on the PayPal app by its account owner. Until then the
-  60-second poll brings cases in; PayPal's dispute list itself can lag a new case by a few minutes.
+- New cases arrive by webhook within seconds. The 60-second poll is only a backstop, and when it is
+  the one that finds a case, it can be a few minutes late because PayPal's dispute list lags.
 - Sandbox only. Going live needs a live PayPal app and the same env variables with live keys.
 
 ## License
